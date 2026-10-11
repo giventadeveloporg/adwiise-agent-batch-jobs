@@ -4,6 +4,7 @@ import com.eventmanager.batch.repository.EventTicketTransactionRepository;
 import com.eventmanager.batch.repository.MembershipSubscriptionRepository;
 import com.eventmanager.batch.service.BatchJobOrchestrationService;
 import com.eventmanager.batch.service.ManualPaymentSummaryJobService;
+import com.eventmanager.batch.service.PlatformBillingLockService;
 import com.eventmanager.batch.service.StripeFeesTaxUpdateService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,7 @@ public class BatchJobScheduler {
     private final StripeFeesTaxUpdateService stripeFeesTaxUpdateService;
     private final EventTicketTransactionRepository transactionRepository;
     private final ManualPaymentSummaryJobService manualPaymentSummaryJobService;
+    private final PlatformBillingLockService platformBillingLockService;
 
     @Value("${batch.subscription-renewal.enabled:true}")
     private boolean subscriptionRenewalEnabled;
@@ -175,6 +177,20 @@ public class BatchJobScheduler {
             manualPaymentSummaryJobService.runManualPaymentSummaryJob(null, null, null, "SCHEDULED");
         } catch (Exception e) {
             log.error("Failed to execute scheduled manual payment summary job: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Locks platform billing rows whose grace period or one-time paid-through date has passed.
+     * Complimentary rows are never locked.
+     */
+    @Scheduled(cron = "${batch.platform-billing-lock.schedule-cron:0 30 2 * * *}")
+    public void scheduledPlatformBillingLock() {
+        try {
+            int locked = platformBillingLockService.lockOverdueRows();
+            log.info("Platform billing lock job finished. Rows locked: {}", locked);
+        } catch (Exception e) {
+            log.error("Failed to execute platform billing lock job: {}", e.getMessage(), e);
         }
     }
 }
