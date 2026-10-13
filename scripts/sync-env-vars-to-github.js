@@ -6,13 +6,13 @@
  *
  * Usage:
  *   node scripts/sync-env-vars-to-github.js --env=dev
- *   node scripts/sync-env-vars-to-github.js --env=dev --file=infrastructure_deployment/environments/event-site-manager-batch-jobs-dev.properties
+ *   node scripts/sync-env-vars-to-github.js --env=dev --file=infrastructure_deployment/environments/kluvo-ai-batch-jobs-dev.properties
  *   node scripts/sync-env-vars-to-github.js --env=prod --repo=owner/repo --environment=prod
  *
  * Options:
  *   --env=<name>         Environment profile for picking .properties file (default: dev)
  *   --file=<path>        Path to .properties file (overrides --env for file location)
- *   --repo=<owner/repo>  GitHub repo (default: giventadeveloporg/event-site-manager-batch-jobs)
+ *   --repo=<owner/repo>  GitHub repo (default: giventadeveloporg/kluvo-ai-batch-jobs)
  *   --environment=<name>  GitHub Environment name (default: same as --env, e.g. dev)
  *
  * Requires: .env with GIT_PAT_TOKEN (or set GIT_PAT_TOKEN in shell).
@@ -46,7 +46,7 @@ loadEnv();
 const { readEnvProps } = require('./read-env-props.js');
 
 const GITHUB_API = 'api.github.com';
-const DEFAULT_REPO = 'giventadeveloporg/event-site-manager-batch-jobs';
+const DEFAULT_REPO = 'giventadeveloporg/kluvo-ai-batch-jobs';
 
 function parseSyncArgs(argv) {
   let env = 'dev';
@@ -80,7 +80,7 @@ function httpsRequest(options, body) {
         path: options.path,
         method: options.method || 'GET',
         headers: {
-          'User-Agent': 'event-site-manager-batch-jobs-sync',
+          'User-Agent': 'kluvo-ai-batch-jobs-sync',
           Accept: 'application/vnd.github+json',
           'X-GitHub-Api-Version': '2022-11-28',
           Authorization: authHeader(options.token),
@@ -147,7 +147,7 @@ async function main() {
   const { env, file, repo, environment } = parseSyncArgs(argv);
   const [owner, repoName] = repo.split('/');
   if (!owner || !repoName) {
-    console.error('--repo must be owner/repo (e.g. giventadeveloporg/event-site-manager-batch-jobs)');
+    console.error('--repo must be owner/repo (e.g. giventadeveloporg/kluvo-ai-batch-jobs)');
     process.exit(1);
   }
 

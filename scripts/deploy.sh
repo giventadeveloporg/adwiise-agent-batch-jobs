@@ -7,7 +7,7 @@ set -e
 
 # Configuration
 AWS_REGION=${AWS_REGION:-us-east-1}
-ECR_REPOSITORY=${ECR_REPOSITORY:-event-site-manager-batch-jobs}
+ECR_REPOSITORY=${ECR_REPOSITORY:-kluvo-ai-batch-jobs}
 AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID:-}
 
 # Colors for output

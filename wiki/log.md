@@ -1,4 +1,4 @@
-# Operation Log — event-site-manager-batch-jobs
+# Operation Log — kluvo-ai-batch-jobs
 
 > Append-only. Each entry prefixed with date and operation type.
 

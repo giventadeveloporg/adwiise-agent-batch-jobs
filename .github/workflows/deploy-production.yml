@@ -20,10 +20,10 @@ env:
   # S3/SES runtime region injected into the container (matches application.yml default)
   AWS_S3_REGION: ${{ vars.AWS_REGION || 'us-east-2' }}
   # Set ECR_REPOSITORY_PROD in GitHub environment variables to match the repo in AWS ECR
-  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY_PROD || 'event-site-manager-batch-jobs-prod' }}
-  ECS_SERVICE: event-site-manager-prod-batch-jobs-service
-  ECS_CLUSTER: event-site-manager-prod-cluster
-  ECS_TASK_DEFINITION: event-site-manager-prod-batch-jobs
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY_PROD || 'kluvo-ai-batch-jobs-prod' }}
+  ECS_SERVICE: kluvo-ai-prod-batch-jobs-service
+  ECS_CLUSTER: kluvo-ai-prod-cluster
+  ECS_TASK_DEFINITION: kluvo-ai-prod-batch-jobs
   # Must match the container "name" in the ECS task definition in AWS (see task definition JSON in ECS console)
   CONTAINER_NAME: batch-jobs-service
 

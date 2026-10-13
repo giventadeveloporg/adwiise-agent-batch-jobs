@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: event-site-manager-batch-jobs
+    container_name: kluvo-ai-batch-jobs
     ports:
       - "${SERVER_PORT:-8081}:8081"
     environment:
@@ -17,8 +17,8 @@ services:
       # Use PostgreSQL container name when both containers are on the same network
       # Use 'host.docker.internal' to connect to PostgreSQL running on host
       # Use 'localhost' when running the app locally (not in Docker)
-      - RDS_ENDPOINT=${RDS_ENDPOINT:-event_site_manager_db-postgresql-1}
-      - DB_NAME=${DB_NAME:-event_site_manager_db}
+      - RDS_ENDPOINT=${RDS_ENDPOINT:-kluvo_ai_db-postgresql-1}
+      - DB_NAME=${DB_NAME:-kluvo_ai_db}
       - DB_USERNAME=${DB_USERNAME:-event_site_app}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_MAX_POOL_SIZE=${DB_MAX_POOL_SIZE:-10}
@@ -67,8 +67,8 @@ services:
 networks:
   batch-jobs-network:
     external: true
-    name: event-site-manager-batch-jobs_batch-jobs-network
+    name: kluvo-ai-batch-jobs_batch-jobs-network
   postgres-network:
     external: true
-    name: event_site_manager_db_default
+    name: kluvo_ai_db_default
 

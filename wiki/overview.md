@@ -1,4 +1,4 @@
-# Overview — event-site-manager-batch-jobs
+# Overview — kluvo-ai-batch-jobs
 
 > Evolving synthesis maintained by the LLM. Updated as new sources are ingested.
 

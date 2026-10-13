@@ -11,7 +11,7 @@
     </parent>
 
     <groupId>com.eventmanager</groupId>
-    <artifactId>event-site-manager-batch-jobs</artifactId>
+    <artifactId>kluvo-ai-batch-jobs</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>Kluvo Batch Jobs</name>
     <description>Batch Jobs Service for the Kluvo platform - Subscription Renewal and Email Processing</description>

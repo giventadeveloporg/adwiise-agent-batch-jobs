@@ -1,4 +1,4 @@
-# Wiki Index — event-site-manager-batch-jobs
+# Wiki Index — kluvo-ai-batch-jobs
 
 > Auto-generated on 2026-04-15. LLM maintains this file.
 

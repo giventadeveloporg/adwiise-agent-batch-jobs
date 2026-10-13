@@ -4,7 +4,7 @@ globs: src/main/java/**/domain/*.java, src/main/java/**/SequenceSynchronization*
 alwaysApply: false
 ---
 
-# Sequence Alignment (event-site-manager-batch-jobs)
+# Sequence Alignment (kluvo-ai-batch-jobs)
 
 Batch jobs share the same **per-table** PostgreSQL id sequences as the main API (`public.{table_name}_id_seq`). **Spring Batch framework** tables use **separate** sequences — never sync them via application table scripts.
 
@@ -54,5 +54,5 @@ Do **not** add Spring Batch sequences to `sync_all_table_sequences.sql` or Hiber
 ## Canonical documentation
 
 - **mosc-temp:** `.cursor/rules/sequence_id_alignment_and_import.mdc`
-- **Main service:** `event-site-manager-service/.cursor/rules/sequence_id_alignment_and_import.mdc`
+- **Main service:** `kluvo-ai-service/.cursor/rules/sequence_id_alignment_and_import.mdc`
 - **Schema:** `database/Latest_Schema_Post__Blob_Claude_12.sql` (synced from mosc-temp canonical)
