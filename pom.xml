@@ -13,8 +13,8 @@
     <groupId>com.eventmanager</groupId>
     <artifactId>event-site-manager-batch-jobs</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>Event Site Manager Batch Jobs</name>
-    <description>Batch Jobs Service for Event Site Manager - Subscription Renewal and Email Processing</description>
+    <name>Kluvo Batch Jobs</name>
+    <description>Batch Jobs Service for the Kluvo platform - Subscription Renewal and Email Processing</description>
 
     <properties>
         <java.version>17</java.version>

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This Spring Boot Spring Batch project handles subscription renewal and batch email processing for the Event Site Manager application. It runs independently from the main backend to reduce load and can be deployed to AWS ECS Fargate.
+This Spring Boot Spring Batch project handles subscription renewal and batch email processing for the Kluvo platform. It runs independently from the main backend to reduce load and can be deployed to AWS ECS Fargate.
 
 ## Project Structure
 
