@@ -11,7 +11,7 @@
     </parent>
 
     <groupId>com.eventmanager</groupId>
-    <artifactId>kluvo-ai-batch-jobs</artifactId>
+    <artifactId>adwiise-agent-batch-jobs</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>AdwiiseAgent Batch Jobs</name>
     <description>Batch Jobs Service for the AdwiiseAgent platform - Subscription Renewal and Email Processing</description>

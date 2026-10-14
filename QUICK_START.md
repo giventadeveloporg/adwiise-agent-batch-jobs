@@ -7,7 +7,7 @@ This Spring Boot Spring Batch project handles subscription renewal and batch ema
 ## Project Structure
 
 ```
-kluvo-ai-batch-jobs/
+adwiise-agent-batch-jobs/
 ├── src/main/java/com/eventmanager/batch/
 │   ├── BatchJobsApplication.java          # Main application entry point
 │   ├── config/                             # Configuration classes
@@ -83,7 +83,7 @@ psql -d event_manager -f database/migrations/add_batch_job_columns.sql
 ```bash
 # Set environment variables
 export RDS_ENDPOINT=localhost
-export DB_NAME=kluvo_ai_db
+export DB_NAME=adwiise_agent_db
 export DB_USERNAME=event_site_app
 export DB_PASSWORD=your-database-password
 export DB_MAX_POOL_SIZE=10
@@ -106,21 +106,21 @@ mvn clean package
 mvn test
 
 # Run application
-java -jar target/kluvo-ai-batch-jobs-0.0.1-SNAPSHOT.jar
+java -jar target/adwiise-agent-batch-jobs-0.0.1-SNAPSHOT.jar
 ```
 
 ### 4. Docker Build
 
 ```bash
 # Build Docker image
-docker build -t kluvo-ai-batch-jobs:latest .
+docker build -t adwiise-agent-batch-jobs:latest .
 
 # Run container locally
 docker run -p 8081:8081 \
   -e DATABASE_URL=jdbc:postgresql://host.docker.internal:5432/event_manager \
   -e DATABASE_USERNAME=postgres \
   -e DATABASE_PASSWORD=postgres \
-  kluvo-ai-batch-jobs:latest
+  adwiise-agent-batch-jobs:latest
 ```
 
 ### 5. Deploy to AWS ECS
@@ -214,7 +214,7 @@ LIMIT 10;
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `RDS_ENDPOINT` | PostgreSQL host/endpoint | `localhost` |
-| `DB_NAME` | Database name | `kluvo_ai_db` |
+| `DB_NAME` | Database name | `adwiise_agent_db` |
 | `DB_USERNAME` | Database username | `event_site_app` |
 | `DB_PASSWORD` | Database password | `your-database-password` |
 | `DB_MAX_POOL_SIZE` | Maximum connection pool size | `10` |
@@ -241,7 +241,7 @@ If `docker-compose build` shows **"failed to execute bake: read |0: file already
 - **Option A (Windows PowerShell):** Disable BuildKit attestations so the build doesn’t hang at the end:
   ```powershell
   $env:DOCKER_BUILDKIT=1
-  docker buildx build --provenance=false -f Dockerfile -t kluvo-ai-batch-jobs-batch-jobs:latest .
+  docker buildx build --provenance=false -f Dockerfile -t adwiise-agent-batch-jobs-batch-jobs:latest .
   ```
   Then run your stack with `docker-compose up` (Compose will use the image you just built).
 

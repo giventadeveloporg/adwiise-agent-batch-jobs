@@ -2,7 +2,7 @@
 
 ## Context
 
-The backend project (`malayalees-us-site-boot`) has been refactored to call the batch job microservice (`kluvo-ai-batch-jobs`) via REST API instead of using AWS Batch SDK directly.
+The backend project (`malayalees-us-site-boot`) has been refactored to call the batch job microservice (`adwiise-agent-batch-jobs`) via REST API instead of using AWS Batch SDK directly.
 
 The backend's `BatchJobRequest` includes an optional `stripeSubscriptionId` parameter that allows processing a single subscription renewal instead of all subscriptions. However, the batch job project's `BatchJobRequest` DTO and service implementation do not yet support this parameter.
 
@@ -12,7 +12,7 @@ Add support for `stripeSubscriptionId` parameter in the batch job project to all
 
 ## Location
 
-**Batch Job Project**: `E:\project_workspace\kluvo-ai-batch-jobs`
+**Batch Job Project**: `E:\project_workspace\adwiise-agent-batch-jobs`
 
 ## Files to Modify
 

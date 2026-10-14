@@ -44,7 +44,7 @@ This service extracts batch processing functionality from the main backend (`mal
 ```bash
 # Database
 RDS_ENDPOINT=localhost
-DB_NAME=kluvo_ai_db
+DB_NAME=adwiise_agent_db
 DB_USERNAME=event_site_app
 DB_PASSWORD=your-database-password
 DB_MAX_POOL_SIZE=10
@@ -85,7 +85,7 @@ mvn clean package
 ```bash
 # Set environment variables
 export RDS_ENDPOINT=localhost
-export DB_NAME=kluvo_ai_db
+export DB_NAME=adwiise_agent_db
 export DB_USERNAME=event_site_app
 export DB_PASSWORD=your-database-password
 export DB_MAX_POOL_SIZE=10
@@ -182,10 +182,10 @@ There is **no `infrastructure_deployment` folder** in this repository. The autom
 
 ```bash
 # Build Docker image
-docker build -t kluvo-ai-batch-jobs .
+docker build -t adwiise-agent-batch-jobs .
 
 # Tag for ECR
-docker tag kluvo-ai-batch-jobs:latest YOUR_ECR_REPOSITORY_URI:latest
+docker tag adwiise-agent-batch-jobs:latest YOUR_ECR_REPOSITORY_URI:latest
 
 # Push to ECR
 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin YOUR_ECR_REPOSITORY_URI
@@ -308,7 +308,7 @@ src/main/java/com/eventmanager/batch/
 
 Check application logs for detailed error messages:
 - Local: Console output
-- ECS: CloudWatch Logs (`/ecs/kluvo-ai-batch-jobs`)
+- ECS: CloudWatch Logs (`/ecs/adwiise-agent-batch-jobs`)
 
 ## License
 

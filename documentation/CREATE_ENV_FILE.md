@@ -4,7 +4,7 @@ Since `.env` files contain sensitive information, they cannot be created automat
 
 ## Steps to Create .env File
 
-1. **Create a new file** named `.env` in the project root directory (`E:\project_workspace\kluvo-ai-batch-jobs\.env`)
+1. **Create a new file** named `.env` in the project root directory (`E:\project_workspace\adwiise-agent-batch-jobs\.env`)
 
 2. **Copy the following content** into the `.env` file:
 
@@ -14,7 +14,7 @@ SERVER_PORT=8081
 
 # Database Configuration
 RDS_ENDPOINT=localhost
-DB_NAME=kluvo_ai_db
+DB_NAME=adwiise_agent_db
 DB_USERNAME=event_site_app
 DB_PASSWORD=your-database-password
 DB_MAX_POOL_SIZE=10
@@ -55,7 +55,7 @@ If you prefer not to use a .env file, you can set environment variables directly
 3. Under **Environment variables**, add each variable:
    - `SERVER_PORT=8081`
    - `RDS_ENDPOINT=localhost`
-   - `DB_NAME=kluvo_ai_db`
+   - `DB_NAME=adwiise_agent_db`
    - etc.
 
 ## Verify Configuration

@@ -1,9 +1,9 @@
 spring:
   application:
-    name: kluvo-ai-batch-jobs
+    name: adwiise-agent-batch-jobs
 
   datasource:
-    url: jdbc:postgresql://${RDS_ENDPOINT:localhost}:5432/${DB_NAME:kluvo_ai_db}
+    url: jdbc:postgresql://${RDS_ENDPOINT:localhost}:5432/${DB_NAME:adwiise_agent_db}
     username: ${DB_USERNAME:event_site_app}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver

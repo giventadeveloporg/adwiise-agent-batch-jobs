@@ -35,7 +35,7 @@ Sync only via `database/migrations/sync_spring_batch_sequences.sql`. Do **not** 
 
 ## Multi-tenancy, timestamps, FKs
 
-Same as main service — see `kluvo-ai-service/.cursor/rules/database_schema_guidelines.mdc`.
+Same as main service — see `adwiise-agent-service/.cursor/rules/database_schema_guidelines.mdc`.
 
 ## Checklist for new application tables
 

@@ -7,7 +7,7 @@
     "Arn": "arn:aws:ecs:REGION:ACCOUNT_ID:cluster/YOUR_CLUSTER_NAME",
     "RoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsEventsRole",
     "EcsParameters": {
-      "TaskDefinitionArn": "arn:aws:ecs:REGION:ACCOUNT_ID:task-definition/kluvo-ai-batch-jobs",
+      "TaskDefinitionArn": "arn:aws:ecs:REGION:ACCOUNT_ID:task-definition/adwiise-agent-batch-jobs",
       "LaunchType": "FARGATE",
       "NetworkConfiguration": {
         "awsvpcConfiguration": {

@@ -24,7 +24,7 @@ const ENVS_DIR = path.join(__dirname, '..', 'infrastructure_deployment', 'enviro
 const DEFAULT_ENV = 'dev';
 const DEFAULT_PROPS_PATH = path.join(
   ENVS_DIR,
-  'kluvo-ai-batch-jobs-dev.properties'
+  'adwiise-agent-batch-jobs-dev.properties'
 );
 
 /**
@@ -59,7 +59,7 @@ function parseArgs(argv) {
  * @returns {string}
  */
 function pathForEnv(env) {
-  const name = `kluvo-ai-batch-jobs-${env}.properties`;
+  const name = `adwiise-agent-batch-jobs-${env}.properties`;
   return path.join(ENVS_DIR, name);
 }
 

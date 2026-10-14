@@ -3,7 +3,7 @@
 
 param(
     [string]$AwsRegion = "us-east-1",
-    [string]$EcrRepository = "kluvo-ai-batch-jobs",
+    [string]$EcrRepository = "adwiise-agent-batch-jobs",
     [string]$AwsAccountId = ""
 )
 

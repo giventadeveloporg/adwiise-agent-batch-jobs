@@ -1,7 +1,7 @@
 # Tenant Email Header and Footer Fallback Implementation Prompt
 
 ## Context
-You are working on the **Event Site Manager Batch Jobs** project located at `E:\project_workspace\kluvo-ai-batch-jobs`. This project receives batch email job requests from the backend Spring Boot application (`malayalees-us-site-boot`) and processes them asynchronously.
+You are working on the **Event Site Manager Batch Jobs** project located at `E:\project_workspace\adwiise-agent-batch-jobs`. This project receives batch email job requests from the backend Spring Boot application (`malayalees-us-site-boot`) and processes them asynchronously.
 
 ## Problem Statement
 Currently, when building email content from promotion email templates, if the template doesn't have a header image or footer configured, the emails are sent without tenant branding (header images and footers). We need to implement a **fallback mechanism** that automatically uses tenant-level email header and footer settings from the `tenant_settings` table when template-level settings are not available.

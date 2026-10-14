@@ -1,4 +1,4 @@
-# Wiki Index — kluvo-ai-batch-jobs
+# Wiki Index — adwiise-agent-batch-jobs
 
 > Auto-generated on 2026-04-15. LLM maintains this file.
 
