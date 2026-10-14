@@ -1,4 +1,4 @@
-# Kluvo Batch Jobs Service
+# AdwiiseAgent Batch Jobs Service
 
 Spring Boot Spring Batch application for processing subscription renewals and batch emails. This service is designed to run on AWS ECS Fargate as scheduled tasks to offload batch processing from the main backend application.
 
