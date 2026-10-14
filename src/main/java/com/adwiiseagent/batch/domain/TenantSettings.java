@@ -27,6 +27,10 @@ public class TenantSettings implements Serializable {
     @Column(name = "tenant_id", length = 255, nullable = false, unique = true)
     private String tenantId;
 
+    /** Git repository URL for the project that belongs to this tenant. */
+    @Column(name = "repository_url", length = 1024)
+    private String repositoryUrl;
+
     @Column(name = "allow_user_registration")
     private Boolean allowUserRegistration;
 
