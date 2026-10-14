@@ -49,7 +49,7 @@ The `stripe_amount_tax` field is NULL because:
 
 ### Code Flow (from `StripeFeesTaxService.getStripeTax()`)
 
-```224:270:src/main/java/com/eventmanager/batch/service/StripeFeesTaxService.java
+```224:270:src/main/java/com/adwiiseagent/batch/service/StripeFeesTaxService.java
             // Method 1: Try CheckoutSession first (most reliable for Stripe Tax)
             if (checkoutSessionId != null && !checkoutSessionId.isEmpty()) {
                 try {
@@ -164,7 +164,7 @@ The `event_ticket_transaction` table has:
 
 Both frontend (manual) and scheduled job executions use the **exact same service method**:
 
-```213:220:src/main/java/com/eventmanager/batch/controller/BatchJobController.java
+```213:220:src/main/java/com/adwiiseagent/batch/controller/BatchJobController.java
             stripeFeesTaxUpdateService.processStripeFeesAndTax(
                 tenantId,
                 eventId,
@@ -177,7 +177,7 @@ Both frontend (manual) and scheduled job executions use the **exact same service
 
 And the same processing logic:
 
-```189:221:src/main/java/com/eventmanager/batch/service/StripeFeesTaxUpdateService.java
+```189:221:src/main/java/com/adwiiseagent/batch/service/StripeFeesTaxUpdateService.java
             for (EventTicketTransaction txn : transactions) {
                 stats.processed++;
 
@@ -218,7 +218,7 @@ And the same processing logic:
 
 The batch job has an **idempotency check** that skips transactions that already have `stripe_fee_amount` populated:
 
-```193:198:src/main/java/com/eventmanager/batch/service/StripeFeesTaxUpdateService.java
+```193:198:src/main/java/com/adwiiseagent/batch/service/StripeFeesTaxUpdateService.java
                     // Check if already populated (idempotency check, unless forceUpdate)
                     if (!forceUpdate && txn.getStripeFeeAmount() != null &&
                         txn.getStripeFeeAmount().compareTo(BigDecimal.ZERO) > 0) {

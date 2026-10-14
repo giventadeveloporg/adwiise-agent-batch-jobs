@@ -43,7 +43,7 @@ private EnumType fieldName;
 
 ### Example 1: PromotionEmailSentLog.emailStatus
 
-**Location:** `src/main/java/com/eventmanager/batch/domain/PromotionEmailSentLog.java:54`
+**Location:** `src/main/java/com/adwiiseagent/batch/domain/PromotionEmailSentLog.java:54`
 
 ```java
 @Enumerated(EnumType.STRING)
@@ -59,7 +59,7 @@ CONSTRAINT chk_email_status CHECK (email_status IN ('SENT', 'FAILED', 'BOUNCED')
 
 ### Example 2: TenantEmailAddress.emailType
 
-**Location:** `src/main/java/com/eventmanager/batch/domain/TenantEmailAddress.java:35`
+**Location:** `src/main/java/com/adwiiseagent/batch/domain/TenantEmailAddress.java:35`
 
 ```java
 @Enumerated(EnumType.STRING)
@@ -89,7 +89,7 @@ When creating database migrations or schema definitions:
 
 ## When Adding New Enum Fields
 
-1. **Create the Java enum** in `src/main/java/com/eventmanager/batch/domain/enumeration/`
+1. **Create the Java enum** in `src/main/java/com/adwiiseagent/batch/domain/enumeration/`
 2. **Map to VARCHAR column** using `@Enumerated(EnumType.STRING)` and `@Column(length = 50)`
 3. **Define database column as VARCHAR** with CHECK constraint in schema/migration files
 4. **Do NOT use** `@JdbcTypeCode(SqlTypes.OTHER)` or `columnDefinition` pointing to PostgreSQL enum types

@@ -8,7 +8,7 @@ This Spring Boot Spring Batch project handles subscription renewal and batch ema
 
 ```
 adwiise-agent-batch-jobs/
-├── src/main/java/com/eventmanager/batch/
+├── src/main/java/com/adwiiseagent/batch/
 │   ├── BatchJobsApplication.java          # Main application entry point
 │   ├── config/                             # Configuration classes
 │   ├── domain/                             # JPA entities

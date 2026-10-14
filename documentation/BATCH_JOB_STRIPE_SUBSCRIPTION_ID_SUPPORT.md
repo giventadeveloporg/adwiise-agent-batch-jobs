@@ -18,7 +18,7 @@ Add support for `stripeSubscriptionId` parameter in the batch job project to all
 
 ### 1. Update `BatchJobRequest` DTO
 
-**File**: `src/main/java/com/eventmanager/batch/dto/BatchJobRequest.java`
+**File**: `src/main/java/com/adwiiseagent/batch/dto/BatchJobRequest.java`
 
 Add the `stripeSubscriptionId` field:
 
@@ -39,7 +39,7 @@ public class BatchJobRequest {
 
 ### 2. Update `BatchJobOrchestrationService`
 
-**File**: `src/main/java/com/eventmanager/batch/service/BatchJobOrchestrationService.java`
+**File**: `src/main/java/com/adwiiseagent/batch/service/BatchJobOrchestrationService.java`
 
 Modify the `runSubscriptionRenewalJob` method to accept and use `stripeSubscriptionId`:
 
@@ -73,7 +73,7 @@ public BatchJobResponse runSubscriptionRenewalJob(
 
 ### 3. Update `BatchJobController`
 
-**File**: `src/main/java/com/eventmanager/batch/controller/BatchJobController.java`
+**File**: `src/main/java/com/adwiiseagent/batch/controller/BatchJobController.java`
 
 Pass `stripeSubscriptionId` to the service:
 
@@ -100,7 +100,7 @@ public ResponseEntity<BatchJobResponse> triggerSubscriptionRenewal(@RequestBody 
 
 ### 4. Update `SubscriptionRenewalReader`
 
-**File**: `src/main/java/com/eventmanager/batch/job/subscription/reader/SubscriptionRenewalReader.java`
+**File**: `src/main/java/com/adwiiseagent/batch/job/subscription/reader/SubscriptionRenewalReader.java`
 
 Add support for filtering by `stripeSubscriptionId`:
 
@@ -137,7 +137,7 @@ public MembershipSubscription read() throws Exception {
 
 ### 5. Update `MembershipSubscriptionRepository`
 
-**File**: `src/main/java/com/eventmanager/batch/repository/MembershipSubscriptionRepository.java`
+**File**: `src/main/java/com/adwiiseagent/batch/repository/MembershipSubscriptionRepository.java`
 
 Ensure the repository has the method to find by `stripeSubscriptionId` and `tenantId`:
 

@@ -277,7 +277,7 @@
 
         <h3>Code Flow (from <code>StripeFeesTaxService.getStripeTax()</code>)</h3>
         <div class="code-reference">
-            <div class="code-reference-header">src/main/java/com/eventmanager/batch/service/StripeFeesTaxService.java (lines 224-270)</div>
+            <div class="code-reference-header">src/main/java/com/adwiiseagent/batch/service/StripeFeesTaxService.java (lines 224-270)</div>
             <pre><code>// Method 1: Try CheckoutSession first (most reliable for Stripe Tax)
 if (checkoutSessionId != null && !checkoutSessionId.isEmpty()) {
     try {
@@ -411,7 +411,7 @@ return null;</code></pre>
         <p>Both frontend (manual) and scheduled job executions use the <strong>exact same service method</strong>:</p>
 
         <div class="code-reference">
-            <div class="code-reference-header">src/main/java/com/eventmanager/batch/controller/BatchJobController.java (lines 213-220)</div>
+            <div class="code-reference-header">src/main/java/com/adwiiseagent/batch/controller/BatchJobController.java (lines 213-220)</div>
             <pre><code>stripeFeesTaxUpdateService.processStripeFeesAndTax(
     tenantId,
     eventId,
@@ -425,7 +425,7 @@ return null;</code></pre>
         <p>And the same processing logic:</p>
 
         <div class="code-reference">
-            <div class="code-reference-header">src/main/java/com/eventmanager/batch/service/StripeFeesTaxUpdateService.java (lines 189-221)</div>
+            <div class="code-reference-header">src/main/java/com/adwiiseagent/batch/service/StripeFeesTaxUpdateService.java (lines 189-221)</div>
             <pre><code>for (EventTicketTransaction txn : transactions) {
     stats.processed++;
 
@@ -466,7 +466,7 @@ return null;</code></pre>
         <p>The batch job has an <strong>idempotency check</strong> that skips transactions that already have <code>stripe_fee_amount</code> populated:</p>
 
         <div class="code-reference">
-            <div class="code-reference-header">src/main/java/com/eventmanager/batch/service/StripeFeesTaxUpdateService.java (lines 193-198)</div>
+            <div class="code-reference-header">src/main/java/com/adwiiseagent/batch/service/StripeFeesTaxUpdateService.java (lines 193-198)</div>
             <pre><code>// Check if already populated (idempotency check, unless forceUpdate)
 if (!forceUpdate && txn.getStripeFeeAmount() != null &&
     txn.getStripeFeeAmount().compareTo(BigDecimal.ZERO) > 0) {

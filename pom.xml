@@ -10,7 +10,7 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.eventmanager</groupId>
+    <groupId>com.adwiiseagent</groupId>
     <artifactId>adwiise-agent-batch-jobs</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>AdwiiseAgent Batch Jobs</name>

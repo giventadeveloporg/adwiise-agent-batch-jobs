@@ -1,4 +1,4 @@
-# PowerShell deployment script for Event Site Manager Batch Jobs Service
+# PowerShell deployment script for Adwiise Agent Batch Jobs Service
 # This script builds, tags, and pushes the Docker image to AWS ECR
 
 param(

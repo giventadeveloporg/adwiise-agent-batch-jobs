@@ -19,7 +19,7 @@ Batch jobs share the same **per-table** PostgreSQL id sequences as the main API 
 )
 ```
 
-Each insert-capable entity under `com.eventmanager.batch.domain` has a **unique** generator name and matching `sequenceName`.
+Each insert-capable entity under `com.adwiiseagent.batch.domain` has a **unique** generator name and matching `sequenceName`.
 
 **Exception:** `BatchJobExecution` (`batch_job_execution_log`) uses `GenerationType.IDENTITY` — not a per-table Hibernate sequence.
 

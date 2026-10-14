@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Deployment script for Event Site Manager Batch Jobs Service
+# Deployment script for Adwiise Agent Batch Jobs Service
 # This script builds, tags, and pushes the Docker image to AWS ECR
 
 set -e

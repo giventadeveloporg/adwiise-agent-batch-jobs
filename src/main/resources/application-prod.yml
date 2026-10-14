@@ -19,6 +19,6 @@ spring:
 logging:
   level:
     root: INFO
-    com.eventmanager.batch: INFO
+    com.adwiiseagent.batch: INFO
     org.springframework.batch: WARN
 

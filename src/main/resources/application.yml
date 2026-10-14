@@ -157,7 +157,7 @@ qr:
 logging:
   level:
     root: INFO
-    com.eventmanager.batch: DEBUG
+    com.adwiiseagent.batch: DEBUG
     org.springframework.batch: INFO
     org.springframework.jdbc: WARN
   pattern:

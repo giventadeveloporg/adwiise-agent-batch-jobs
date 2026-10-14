@@ -21,7 +21,7 @@ spring:
 logging:
   level:
     root: INFO
-    com.eventmanager.batch: DEBUG
+    com.adwiiseagent.batch: DEBUG
     org.springframework.batch: DEBUG
 
 

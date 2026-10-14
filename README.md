@@ -265,7 +265,7 @@ ResponseEntity<BatchJobResponse> response = restTemplate.postForEntity(
 ### Project Structure
 
 ```
-src/main/java/com/eventmanager/batch/
+src/main/java/com/adwiiseagent/batch/
 ├── BatchJobsApplication.java          # Main application class
 ├── config/                             # Configuration classes
 │   └── BatchConfig.java
