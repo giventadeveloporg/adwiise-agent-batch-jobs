@@ -262,6 +262,10 @@ public class TenantSettings implements Serializable {
     @Column(name = "show_header_family")
     private Boolean showHeaderFamily;
 
+    /** Header menu: featured tournament short label (null = OFF). Sports tenants. */
+    @Column(name = "show_header_tournament")
+    private Boolean showHeaderTournament;
+
     @Column(name = "created_at", nullable = false)
     private ZonedDateTime createdAt;
 
