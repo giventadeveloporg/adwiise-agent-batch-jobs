@@ -1,15 +1,16 @@
 name: Deploy to Dev
 
-# Triggered on push to any branch, or manually (workflow_dispatch).
+# Triggered on push to main, feature/**, fix/**, and release/v1.0.0, or manually.
+# A push to release/v1.0.0 also runs Deploy to Production. Dev and production
+# use different ECS clusters, so both can roll out the same commit together.
 
 on:
   push:
-    # Avoid racing Deploy to Production when release/v1.0.0 is pushed
-    # (both workflows were targeting DEV concurrently and triggering circuit-breaker rollbacks).
     branches:
       - main
       - 'feature/**'
       - 'fix/**'
+      - release/v1.0.0
   workflow_dispatch:
     inputs:
       version:
