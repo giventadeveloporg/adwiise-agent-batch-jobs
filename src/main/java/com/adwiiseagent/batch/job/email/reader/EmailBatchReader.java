@@ -162,6 +162,7 @@ public class EmailBatchReader implements ItemReader<EmailRecipient> {
             return List.of();
         }
 
+        // Two profile rows for one email must stay one message.
         return emails.stream()
             .distinct()
             .limit(maxEmails)

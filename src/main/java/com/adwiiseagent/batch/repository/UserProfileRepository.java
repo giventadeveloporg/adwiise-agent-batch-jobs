@@ -10,6 +10,10 @@ import java.util.List;
 
 @Repository
 public interface UserProfileRepository extends JpaRepository<UserProfile, Long> {
+    /**
+     * One message per email. Two user_profile rows may share an email when their user_id values
+     * come from different Clerk applications, and those rows must stay one recipient.
+     */
     @Query("SELECT DISTINCT u.email FROM UserProfile u " +
            "WHERE u.tenantId = :tenantId " +
            "AND u.isEmailSubscribed = true " +

@@ -7,6 +7,7 @@ import java.io.Serializable;
 /**
  * Entity for user profiles.
  * Simplified version for batch job processing.
+ * No email unique constraint and no user_id column. Do not update user_id from email.
  */
 @Entity
 @Table(name = "user_profile")

@@ -228,6 +228,7 @@ DROP TABLE IF EXISTS public.communication_campaign CASCADE;
 DROP TABLE IF EXISTS public.email_log CASCADE;
 DROP TABLE IF EXISTS public.whatsapp_log CASCADE;
 -- Squad roster (drop child before parent; references user_profile and tenant_organization)
+DROP TABLE IF EXISTS public.team_member_achievement CASCADE;
 DROP TABLE IF EXISTS public.team_members CASCADE;
 DROP TABLE IF EXISTS public.team_groups CASCADE;
 DROP TABLE IF EXISTS public.executive_committee_team_members CASCADE;
@@ -979,6 +980,13 @@ CREATE SEQUENCE IF NOT EXISTS public.team_groups_id_seq
     CACHE 1;
 
 CREATE SEQUENCE IF NOT EXISTS public.team_members_id_seq
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    START WITH 1
+    CACHE 1;
+
+CREATE SEQUENCE IF NOT EXISTS public.team_member_achievement_id_seq
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
@@ -3911,12 +3919,46 @@ CREATE TABLE public.team_members (
     lineup_subtitle character varying(128),
     instrument character varying(128),
     vocal_role character varying(128),
+    nationality character varying(100),
+    date_of_birth date,
+    preferred_foot character varying(16),
+    height_cm integer,
+    instagram_url character varying(500),
+    preferred_name character varying(100),
+    spoken_languages character varying(255),
+    weight_kg integer,
+    body_build character varying(32),
+    club_name character varying(255),
+    league_division character varying(128),
+    secondary_positions character varying(255),
+    season_label character varying(32),
+    season_appearances integer,
+    season_goals integer,
+    season_assists integer,
+    season_minutes integer,
+    season_wins integer,
+    season_draws integer,
+    season_losses integer,
+    pass_accuracy_pct double precision,
+    shot_accuracy_pct double precision,
+    top_speed_kmh double precision,
+    career_appearances integer,
+    career_goals integer,
+    career_assists integer,
+    gpa double precision,
+    academic_score character varying(64),
+    coach_name character varying(255),
+    coach_email character varying(255),
+    coach_phone character varying(40),
+    recent_matches character varying(8000),
+    sport_profiles text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT team_members_pkey PRIMARY KEY (id),
     CONSTRAINT fk_team_members__tenant_id FOREIGN KEY (tenant_id) REFERENCES public.tenant_organization(tenant_id) ON DELETE CASCADE,
     CONSTRAINT fk_team_members__team_group_id FOREIGN KEY (team_group_id) REFERENCES public.team_groups(id) ON DELETE CASCADE,
-    CONSTRAINT fk_team_members__user_profile_id FOREIGN KEY (user_profile_id) REFERENCES public.user_profile(id) ON DELETE SET NULL
+    CONSTRAINT fk_team_members__user_profile_id FOREIGN KEY (user_profile_id) REFERENCES public.user_profile(id) ON DELETE SET NULL,
+    CONSTRAINT chk_team_members__preferred_foot CHECK (preferred_foot IS NULL OR preferred_foot IN ('LEFT', 'RIGHT', 'BOTH'))
 );
 
 CREATE INDEX idx_team_members_team_group_id ON public.team_members(team_group_id);
@@ -3936,6 +3978,37 @@ CREATE TRIGGER trg_team_groups_updated_at
 
 CREATE TRIGGER trg_team_members_updated_at
     BEFORE UPDATE ON public.team_members
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Player awards and honors (child of team_members)
+CREATE TABLE public.team_member_achievement (
+    id bigint DEFAULT nextval('public.team_member_achievement_id_seq'::regclass) NOT NULL,
+    tenant_id character varying(255) NOT NULL,
+    team_member_id bigint NOT NULL,
+    title character varying(500) NOT NULL,
+    description character varying(2000),
+    achievement_date date,
+    category character varying(32) NOT NULL,
+    issuer character varying(255),
+    url character varying(500),
+    image_url character varying(500),
+    display_order integer,
+    is_featured boolean DEFAULT false,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT team_member_achievement_pkey PRIMARY KEY (id),
+    CONSTRAINT chk_team_member_achievement__category CHECK (category IN ('AWARD', 'HONOR', 'TROPHY', 'CAP', 'OTHER')),
+    CONSTRAINT fk_team_member_achievement__tenant_id FOREIGN KEY (tenant_id) REFERENCES public.tenant_organization(tenant_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_team_member_achievement__team_member_id FOREIGN KEY (team_member_id) REFERENCES public.team_members(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_team_member_achievement_tenant_member_order ON public.team_member_achievement(tenant_id, team_member_id, display_order);
+
+COMMENT ON TABLE public.team_member_achievement IS 'Awards, honors, trophies, and caps for a team member';
+
+CREATE TRIGGER trg_team_member_achievement_updated_at
+    BEFORE UPDATE ON public.team_member_achievement
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at_column();
 
@@ -7353,6 +7426,12 @@ SELECT pg_catalog.setval(
 SELECT pg_catalog.setval(
     'public.team_members_id_seq',
     GREATEST(COALESCE((SELECT MAX(id) FROM public.team_members), 1), 1),
+    true
+);
+-- team_member_achievement
+SELECT pg_catalog.setval(
+    'public.team_member_achievement_id_seq',
+    GREATEST(COALESCE((SELECT MAX(id) FROM public.team_member_achievement), 1), 1),
     true
 );
 -- communication_campaign
