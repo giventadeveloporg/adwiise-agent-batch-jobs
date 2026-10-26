@@ -228,9 +228,15 @@ DROP TABLE IF EXISTS public.communication_campaign CASCADE;
 DROP TABLE IF EXISTS public.email_log CASCADE;
 DROP TABLE IF EXISTS public.whatsapp_log CASCADE;
 -- Squad roster (drop child before parent; references user_profile and tenant_organization)
+DROP TABLE IF EXISTS public.team_member_sport CASCADE;
 DROP TABLE IF EXISTS public.team_member_achievement CASCADE;
 DROP TABLE IF EXISTS public.team_members CASCADE;
 DROP TABLE IF EXISTS public.team_groups CASCADE;
+DROP TABLE IF EXISTS public.sports_category CASCADE;
+DROP TABLE IF EXISTS public.achievement_category CASCADE;
+DROP TABLE IF EXISTS public.team_type CASCADE;
+DROP TABLE IF EXISTS public.access_role CASCADE;
+DROP TABLE IF EXISTS public.retailer_type CASCADE;
 DROP TABLE IF EXISTS public.executive_committee_team_members CASCADE;
 DROP TABLE IF EXISTS public.event_focus_groups CASCADE;
 DROP TABLE IF EXISTS public.focus_group_members CASCADE;
@@ -993,6 +999,48 @@ CREATE SEQUENCE IF NOT EXISTS public.team_member_achievement_id_seq
     START WITH 1
     CACHE 1;
 
+CREATE SEQUENCE IF NOT EXISTS public.sports_category_id_seq
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    START WITH 1
+    CACHE 1;
+
+CREATE SEQUENCE IF NOT EXISTS public.team_member_sport_id_seq
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    START WITH 1
+    CACHE 1;
+
+CREATE SEQUENCE IF NOT EXISTS public.achievement_category_id_seq
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    START WITH 1
+    CACHE 1;
+
+CREATE SEQUENCE IF NOT EXISTS public.team_type_id_seq
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    START WITH 1
+    CACHE 1;
+
+CREATE SEQUENCE IF NOT EXISTS public.access_role_id_seq
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    START WITH 1
+    CACHE 1;
+
+CREATE SEQUENCE IF NOT EXISTS public.retailer_type_id_seq
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    START WITH 1
+    CACHE 1;
+
 CREATE SEQUENCE IF NOT EXISTS public.communication_campaign_id_seq
     INCREMENT BY 1
     NO MINVALUE
@@ -1303,7 +1351,7 @@ CREATE TABLE public.user_profile (
                                      email_subscription_token VARCHAR(2048),
                                      is_email_subscription_token_used BOOLEAN,
                                      user_status character varying(50),
-                                     user_role character varying(50),
+                                     user_role character varying(64),
                                      reviewed_by_admin_at timestamp without time zone,
                                      reviewed_by_admin_id bigint,
                                      clerk_user_id VARCHAR(255),
@@ -3052,12 +3100,11 @@ CREATE TABLE public.tenant_organization (
                                             zip_code character varying(20),
                                             country character varying(100),
                                             website_url character varying(1024),
-                                            site_type character varying(32) DEFAULT 'EVENT_ORG' NOT NULL,
+                                            site_type character varying(64) DEFAULT 'EVENT_ORG' NOT NULL,
                                             site_template_version character varying(32),
                                             is_active boolean DEFAULT true,
                                             created_at timestamp without time zone DEFAULT now() NOT NULL,
                                             updated_at timestamp without time zone DEFAULT now() NOT NULL,
-                                            CONSTRAINT chk_tenant_organization__site_type CHECK ((site_type IN ('EVENT_ORG', 'SPORTS_TEAM', 'MUSIC_BAND', 'CHURCH_ORG', 'PERSONAL_PROFILE', 'HYBRID', 'GAS_STATION'))),
                                             CONSTRAINT check_monthly_fee_positive CHECK ((monthly_fee_usd >= (0)::numeric)),
                                             CONSTRAINT check_subscription_dates CHECK (((subscription_end_date IS NULL) OR (subscription_end_date >= subscription_start_date))),
                                             CONSTRAINT tenant_organization_pkey PRIMARY KEY (id),
@@ -3864,11 +3911,183 @@ COMMENT ON COLUMN public.executive_committee_team_members.expertise IS 'JSON arr
 COMMENT ON COLUMN public.executive_committee_team_members.is_active IS 'Whether the team member is currently active';
 
 
+-- Shared roster catalogs. tenant_id null is the platform list; a tenant row adds a private option.
+CREATE TABLE public.sports_category (
+    id bigint DEFAULT nextval('public.sports_category_id_seq'::regclass) NOT NULL,
+    tenant_id character varying(255),
+    code character varying(64) NOT NULL,
+    label character varying(255) NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT sports_category_pkey PRIMARY KEY (id),
+    CONSTRAINT fk_sports_category__tenant_id FOREIGN KEY (tenant_id) REFERENCES public.tenant_organization(tenant_id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX ux_sports_category__global_code ON public.sports_category (code) WHERE tenant_id IS NULL;
+CREATE UNIQUE INDEX ux_sports_category__tenant_code ON public.sports_category (tenant_id, code) WHERE tenant_id IS NOT NULL;
+CREATE INDEX idx_sports_category_tenant_active ON public.sports_category (tenant_id, is_active, sort_order);
+
+COMMENT ON TABLE public.sports_category IS 'Sports a squad member can play. Null tenant_id is the shared catalog; a tenant row is private to that organization.';
+
+CREATE TABLE public.achievement_category (
+    id bigint DEFAULT nextval('public.achievement_category_id_seq'::regclass) NOT NULL,
+    tenant_id character varying(255),
+    code character varying(64) NOT NULL,
+    label character varying(255) NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT achievement_category_pkey PRIMARY KEY (id),
+    CONSTRAINT fk_achievement_category__tenant_id FOREIGN KEY (tenant_id) REFERENCES public.tenant_organization(tenant_id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX ux_achievement_category__global_code ON public.achievement_category (code) WHERE tenant_id IS NULL;
+CREATE UNIQUE INDEX ux_achievement_category__tenant_code ON public.achievement_category (tenant_id, code) WHERE tenant_id IS NOT NULL;
+CREATE INDEX idx_achievement_category_tenant_active ON public.achievement_category (tenant_id, is_active, sort_order);
+
+COMMENT ON TABLE public.achievement_category IS 'Award categories for team_member_achievement. Null tenant_id is the shared catalog.';
+
+CREATE TABLE public.team_type (
+    id bigint DEFAULT nextval('public.team_type_id_seq'::regclass) NOT NULL,
+    tenant_id character varying(255),
+    code character varying(64) NOT NULL,
+    label character varying(255) NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT team_type_pkey PRIMARY KEY (id),
+    CONSTRAINT fk_team_type__tenant_id FOREIGN KEY (tenant_id) REFERENCES public.tenant_organization(tenant_id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX ux_team_type__global_code ON public.team_type (code) WHERE tenant_id IS NULL;
+CREATE UNIQUE INDEX ux_team_type__tenant_code ON public.team_type (tenant_id, code) WHERE tenant_id IS NOT NULL;
+CREATE INDEX idx_team_type_tenant_active ON public.team_type (tenant_id, is_active, sort_order);
+
+COMMENT ON TABLE public.team_type IS 'Roster group kinds stored on team_groups.team_type. Null tenant_id is the shared catalog.';
+
+CREATE TRIGGER trg_sports_category_updated_at
+    BEFORE UPDATE ON public.sports_category
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER trg_achievement_category_updated_at
+    BEFORE UPDATE ON public.achievement_category
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER trg_team_type_updated_at
+    BEFORE UPDATE ON public.team_type
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+INSERT INTO public.sports_category (tenant_id, code, label, sort_order, is_active) VALUES
+    (NULL, 'cricket', 'Cricket', 1, true),
+    (NULL, 'football', 'Football (Soccer)', 2, true),
+    (NULL, 'basketball', 'Basketball', 3, true),
+    (NULL, 'volleyball', 'Volleyball', 4, true),
+    (NULL, 'tennis-squash', 'Tennis & Squash', 5, true),
+    (NULL, 'badminton', 'Badminton', 6, true),
+    (NULL, 'table-tennis', 'Table Tennis', 7, true),
+    (NULL, 'golf', 'Golf', 8, true);
+
+INSERT INTO public.achievement_category (tenant_id, code, label, sort_order, is_active) VALUES
+    (NULL, 'AWARD', 'Award', 1, true),
+    (NULL, 'HONOR', 'Honor', 2, true),
+    (NULL, 'TROPHY', 'Trophy', 3, true),
+    (NULL, 'CAP', 'Cap', 4, true),
+    (NULL, 'OTHER', 'Other', 5, true);
+
+INSERT INTO public.team_type (tenant_id, code, label, sort_order, is_active) VALUES
+    (NULL, 'SPORTS', 'Sports', 1, true),
+    (NULL, 'MUSIC', 'Music', 2, true),
+    (NULL, 'OTHER', 'Other', 3, true);
+
+-- Access roles stored on user_profile.user_role. Null tenant_id is the shared catalog.
+CREATE TABLE public.access_role (
+    id bigint DEFAULT nextval('public.access_role_id_seq'::regclass) NOT NULL,
+    tenant_id character varying(255),
+    code character varying(64) NOT NULL,
+    label character varying(255) NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    grants_admin boolean DEFAULT false NOT NULL,
+    platform_super boolean DEFAULT false NOT NULL,
+    location_scope character varying(16) DEFAULT 'NONE' NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT access_role_pkey PRIMARY KEY (id),
+    CONSTRAINT chk_access_role__location_scope CHECK ((location_scope IN ('ALL', 'ASSIGNED', 'NONE'))),
+    CONSTRAINT fk_access_role__tenant_id FOREIGN KEY (tenant_id) REFERENCES public.tenant_organization(tenant_id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX ux_access_role__global_code ON public.access_role (code) WHERE tenant_id IS NULL;
+CREATE UNIQUE INDEX ux_access_role__tenant_code ON public.access_role (tenant_id, code) WHERE tenant_id IS NOT NULL;
+CREATE INDEX idx_access_role_tenant_active ON public.access_role (tenant_id, is_active, sort_order);
+
+COMMENT ON TABLE public.access_role IS 'Assignable user_profile.user_role values. grants_admin opens the admin menu. platform_super is platform-wide and only a platform super admin may set it. location_scope is ALL, ASSIGNED, or NONE for gas and retail locations.';
+
+CREATE TABLE public.retailer_type (
+    id bigint DEFAULT nextval('public.retailer_type_id_seq'::regclass) NOT NULL,
+    tenant_id character varying(255),
+    code character varying(64) NOT NULL,
+    label character varying(255) NOT NULL,
+    hint character varying(255),
+    module_key character varying(32) DEFAULT 'EVENT' NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT retailer_type_pkey PRIMARY KEY (id),
+    CONSTRAINT fk_retailer_type__tenant_id FOREIGN KEY (tenant_id) REFERENCES public.tenant_organization(tenant_id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX ux_retailer_type__global_code ON public.retailer_type (code) WHERE tenant_id IS NULL;
+CREATE UNIQUE INDEX ux_retailer_type__tenant_code ON public.retailer_type (tenant_id, code) WHERE tenant_id IS NOT NULL;
+CREATE INDEX idx_retailer_type_tenant_active ON public.retailer_type (tenant_id, is_active, sort_order);
+
+COMMENT ON TABLE public.retailer_type IS 'Assignable tenant_organization.site_type values, including community site kinds and retailer kinds such as gas stations and shops. module_key selects homepage presets.';
+
+CREATE TRIGGER trg_access_role_updated_at
+    BEFORE UPDATE ON public.access_role
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER trg_retailer_type_updated_at
+    BEFORE UPDATE ON public.retailer_type
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+INSERT INTO public.access_role (tenant_id, code, label, sort_order, is_active, grants_admin, platform_super, location_scope) VALUES
+    (NULL, 'SUPER_ADMIN', 'Super admin', 1, true, true, true, 'ALL'),
+    (NULL, 'ADMIN', 'Admin', 2, true, true, false, 'ALL'),
+    (NULL, 'GAS_STATION_ADMIN', 'Gas station admin', 3, true, false, false, 'ALL'),
+    (NULL, 'GAS_STATION_MANAGER', 'Gas station manager', 4, true, false, false, 'ASSIGNED'),
+    (NULL, 'ORGANIZER', 'Organizer', 5, true, false, false, 'NONE'),
+    (NULL, 'VOLUNTEER', 'Volunteer', 6, true, false, false, 'NONE'),
+    (NULL, 'MEMBER', 'Member', 7, true, false, false, 'NONE');
+
+INSERT INTO public.retailer_type (tenant_id, code, label, hint, module_key, sort_order, is_active) VALUES
+    (NULL, 'EVENT_ORG', 'Events organization', 'Community groups, associations, event organizers', 'EVENT', 1, true),
+    (NULL, 'CHURCH_ORG', 'Church / parish', 'Parish news, services, events and documents', 'CHURCH', 2, true),
+    (NULL, 'SPORTS_TEAM', 'Sports team', 'Teams, squads, fixtures', 'SPORTS', 3, true),
+    (NULL, 'MUSIC_BAND', 'Music band', 'Bands, choirs, performances', 'MUSIC', 4, true),
+    (NULL, 'PERSONAL_PROFILE', 'Personal profile', 'Individual professional or personal site', 'PROFILE', 5, true),
+    (NULL, 'HYBRID', 'Hybrid', 'Profile plus events', 'HYBRID', 6, true),
+    (NULL, 'GAS_STATION', 'Gas station', 'Fuel station operations', 'GAS_STATION', 7, true),
+    (NULL, 'GAS_STATION_ENT', 'Gas station enterprise', 'Multi-site gas station group', 'GAS_STATION', 8, true),
+    (NULL, 'LIQUOR_STORE', 'Liquor store', 'Beer, wine, and spirits shop', 'RETAIL', 9, true),
+    (NULL, 'DUNKIN_DONUTS', 'Dunkin Donuts', 'Coffee and donut shop', 'RETAIL', 10, true),
+    (NULL, 'SEVEN_ELEVEN', 'Seven-Eleven', 'Convenience store', 'RETAIL', 11, true);
+
 -- Create team_groups table (sports squad / music band roster metadata)
 CREATE TABLE public.team_groups (
     id bigint DEFAULT nextval('public.team_groups_id_seq'::regclass) NOT NULL,
     tenant_id character varying(255) NOT NULL,
-    team_type character varying(32) NOT NULL,
+    team_type character varying(64) NOT NULL,
     name character varying(255) NOT NULL,
     slug character varying(100),
     section_label character varying(64),
@@ -3881,7 +4100,6 @@ CREATE TABLE public.team_groups (
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT team_groups_pkey PRIMARY KEY (id),
-    CONSTRAINT chk_team_groups__team_type CHECK (team_type IN ('SPORTS', 'MUSIC', 'OTHER')),
     CONSTRAINT fk_team_groups__tenant_id FOREIGN KEY (tenant_id) REFERENCES public.tenant_organization(tenant_id) ON DELETE CASCADE
 );
 
@@ -3989,7 +4207,8 @@ CREATE TABLE public.team_member_achievement (
     title character varying(500) NOT NULL,
     description character varying(2000),
     achievement_date date,
-    category character varying(32) NOT NULL,
+    category character varying(64) NOT NULL,
+    achievement_category_id bigint,
     issuer character varying(255),
     url character varying(500),
     image_url character varying(500),
@@ -3998,9 +4217,9 @@ CREATE TABLE public.team_member_achievement (
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT team_member_achievement_pkey PRIMARY KEY (id),
-    CONSTRAINT chk_team_member_achievement__category CHECK (category IN ('AWARD', 'HONOR', 'TROPHY', 'CAP', 'OTHER')),
     CONSTRAINT fk_team_member_achievement__tenant_id FOREIGN KEY (tenant_id) REFERENCES public.tenant_organization(tenant_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    CONSTRAINT fk_team_member_achievement__team_member_id FOREIGN KEY (team_member_id) REFERENCES public.team_members(id) ON DELETE CASCADE
+    CONSTRAINT fk_team_member_achievement__team_member_id FOREIGN KEY (team_member_id) REFERENCES public.team_members(id) ON DELETE CASCADE,
+    CONSTRAINT fk_team_member_achievement__achievement_category_id FOREIGN KEY (achievement_category_id) REFERENCES public.achievement_category(id) ON DELETE SET NULL
 );
 
 CREATE INDEX idx_team_member_achievement_tenant_member_order ON public.team_member_achievement(tenant_id, team_member_id, display_order);
@@ -4009,6 +4228,31 @@ COMMENT ON TABLE public.team_member_achievement IS 'Awards, honors, trophies, an
 
 CREATE TRIGGER trg_team_member_achievement_updated_at
     BEFORE UPDATE ON public.team_member_achievement
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Selected sports for a squad member (replaces sport_profiles.categories)
+CREATE TABLE public.team_member_sport (
+    id bigint DEFAULT nextval('public.team_member_sport_id_seq'::regclass) NOT NULL,
+    tenant_id character varying(255) NOT NULL,
+    team_member_id bigint NOT NULL,
+    sports_category_id bigint NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT team_member_sport_pkey PRIMARY KEY (id),
+    CONSTRAINT ux_team_member_sport__member_category UNIQUE (team_member_id, sports_category_id),
+    CONSTRAINT fk_team_member_sport__tenant_id FOREIGN KEY (tenant_id) REFERENCES public.tenant_organization(tenant_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_team_member_sport__team_member_id FOREIGN KEY (team_member_id) REFERENCES public.team_members(id) ON DELETE CASCADE,
+    CONSTRAINT fk_team_member_sport__sports_category_id FOREIGN KEY (sports_category_id) REFERENCES public.sports_category(id) ON DELETE RESTRICT
+);
+
+CREATE INDEX idx_team_member_sport_tenant_member ON public.team_member_sport (tenant_id, team_member_id);
+CREATE INDEX idx_team_member_sport_category ON public.team_member_sport (sports_category_id);
+
+COMMENT ON TABLE public.team_member_sport IS 'Sports selected for a squad member. sport_profiles keeps any extra stat JSON.';
+
+CREATE TRIGGER trg_team_member_sport_updated_at
+    BEFORE UPDATE ON public.team_member_sport
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at_column();
 
@@ -7432,6 +7676,42 @@ SELECT pg_catalog.setval(
 SELECT pg_catalog.setval(
     'public.team_member_achievement_id_seq',
     GREATEST(COALESCE((SELECT MAX(id) FROM public.team_member_achievement), 1), 1),
+    true
+);
+-- sports_category
+SELECT pg_catalog.setval(
+    'public.sports_category_id_seq',
+    GREATEST(COALESCE((SELECT MAX(id) FROM public.sports_category), 1), 1),
+    true
+);
+-- team_member_sport
+SELECT pg_catalog.setval(
+    'public.team_member_sport_id_seq',
+    GREATEST(COALESCE((SELECT MAX(id) FROM public.team_member_sport), 1), 1),
+    true
+);
+-- achievement_category
+SELECT pg_catalog.setval(
+    'public.achievement_category_id_seq',
+    GREATEST(COALESCE((SELECT MAX(id) FROM public.achievement_category), 1), 1),
+    true
+);
+-- team_type
+SELECT pg_catalog.setval(
+    'public.team_type_id_seq',
+    GREATEST(COALESCE((SELECT MAX(id) FROM public.team_type), 1), 1),
+    true
+);
+-- access_role
+SELECT pg_catalog.setval(
+    'public.access_role_id_seq',
+    GREATEST(COALESCE((SELECT MAX(id) FROM public.access_role), 1), 1),
+    true
+);
+-- retailer_type
+SELECT pg_catalog.setval(
+    'public.retailer_type_id_seq',
+    GREATEST(COALESCE((SELECT MAX(id) FROM public.retailer_type), 1), 1),
     true
 );
 -- communication_campaign
