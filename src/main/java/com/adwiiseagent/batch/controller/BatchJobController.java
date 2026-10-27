@@ -28,14 +28,18 @@ import com.adwiiseagent.batch.service.ContactFormEmailJobService;
 import com.adwiiseagent.batch.service.ManualPaymentSummaryJobService;
 import com.adwiiseagent.batch.service.ManualPaymentConfirmationEmailJobService;
 import com.adwiiseagent.batch.service.ManualPaymentTicketEmailJobService;
+import com.adwiiseagent.batch.dto.RetailSampleRunRequest;
 import com.adwiiseagent.batch.service.PromotionTestEmailJobService;
+import com.adwiiseagent.batch.service.RetailSampleRunService;
 import com.adwiiseagent.batch.service.StripeFeesTaxUpdateService;
 import com.adwiiseagent.batch.service.StripeTicketBatchRefundService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.ZonedDateTime;
@@ -61,6 +65,7 @@ public class BatchJobController {
     private final StripeTicketBatchRefundService stripeTicketBatchRefundService;
     private final DonationEmailJobService donationEmailJobService;
     private final DonationQrCodeJobService donationQrCodeJobService;
+    private final RetailSampleRunService retailSampleRunService;
     private final EventTicketTransactionRepository transactionRepository;
 
     /**
@@ -317,6 +322,23 @@ public class BatchJobController {
                     .status("FAILED")
                     .message("Failed to trigger job: " + e.getMessage())
                     .build());
+        }
+    }
+
+    /**
+     * Run the retail sample or inbox files now. Does not wait for the night schedule.
+     */
+    @PostMapping("/retail-sample-run")
+    public ResponseEntity<?> triggerRetailSampleRun(@RequestBody(required = false) RetailSampleRunRequest request) {
+        try {
+            Map<String, Object> body = retailSampleRunService.run(request);
+            return ResponseEntity.ok(body);
+        } catch (RestClientResponseException ex) {
+            log.error("Retail sample run failed: {}", ex.getResponseBodyAsString());
+            return ResponseEntity.status(ex.getStatusCode()).body(ex.getResponseBodyAsString());
+        } catch (Exception ex) {
+            log.error("Retail sample run failed: {}", ex.getMessage(), ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ex.getMessage());
         }
     }
 

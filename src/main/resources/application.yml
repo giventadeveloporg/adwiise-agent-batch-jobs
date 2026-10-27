@@ -87,6 +87,11 @@ aws:
 stripe:
   default-api-key: ${STRIPE_DEFAULT_API_KEY:}
 
+# AI engine file-run used by the on-demand retail sample job.
+retail:
+  engine:
+    base-url: ${RETAIL_ENGINE_BASE_URL:http://127.0.0.1:8090}
+
 # Backend API Configuration
 backend:
   api:

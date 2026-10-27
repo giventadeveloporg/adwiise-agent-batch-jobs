@@ -53,6 +53,10 @@ services:
       # Temp directory (machine-agnostic, set by Dockerfile)
       - JAVA_TMPDIR=/tmp/spring-boot-tomcat
       - TMPDIR=/tmp/spring-boot-tomcat
+
+      # AI engine runs on the Windows host. Inside this container, localhost and
+      # 127.0.0.1 are the container itself.
+      - RETAIL_ENGINE_BASE_URL=${RETAIL_ENGINE_BASE_URL:-http://host.docker.internal:8090}
     networks:
       - batch-jobs-network
       - postgres-network
