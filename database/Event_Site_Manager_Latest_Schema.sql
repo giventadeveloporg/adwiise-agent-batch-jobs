@@ -7949,3 +7949,315 @@ SELECT
     END AS status;
 
 
+
+-- =====================================================================
+-- Retail COO tables copied from adwiise_agent_Latest_Schema.sql
+-- Source: adwiise-agent-database-repo/SQLS/Current_Sqls/adwiise_agent_Latest_Schema.sql
+-- Sequences and tables through retail_user_region_assignment.
+-- Copied for operators. This block has not been applied to a database.
+-- =====================================================================
+
+CREATE SEQUENCE IF NOT EXISTS public.retail_location_id_seq
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    START WITH 1
+    CACHE 1;
+
+CREATE SEQUENCE IF NOT EXISTS public.retail_location_profile_id_seq
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    START WITH 1
+    CACHE 1;
+
+CREATE SEQUENCE IF NOT EXISTS public.retail_integration_id_seq
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    START WITH 1
+    CACHE 1;
+
+CREATE SEQUENCE IF NOT EXISTS public.retail_daily_metrics_id_seq
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    START WITH 1
+    CACHE 1;
+
+CREATE SEQUENCE IF NOT EXISTS public.retail_fuel_day_id_seq
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    START WITH 1
+    CACHE 1;
+
+CREATE SEQUENCE IF NOT EXISTS public.retail_department_day_id_seq
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    START WITH 1
+    CACHE 1;
+
+CREATE SEQUENCE IF NOT EXISTS public.retail_recommendation_id_seq
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    START WITH 1
+    CACHE 1;
+
+CREATE SEQUENCE IF NOT EXISTS public.retail_user_location_assignment_id_seq
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    START WITH 1
+    CACHE 1;
+
+CREATE SEQUENCE IF NOT EXISTS public.retail_user_region_assignment_id_seq
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    START WITH 1
+    CACHE 1;
+
+--
+-- Retail COO module (site_type = GAS_STATION or LIQUOR_STORE)
+-- Shared location and cards. Fuel and department rows are pack extensions.
+--
+
+CREATE TABLE IF NOT EXISTS public.retail_location (
+  id bigint DEFAULT nextval('public.retail_location_id_seq'::regclass) NOT NULL,
+  tenant_id character varying(255) NOT NULL,
+  location_name character varying(255) NOT NULL,
+  location_code character varying(64) NOT NULL,
+  retailer_type_code character varying(64),
+  brand character varying(255),
+  region character varying(255),
+  address_line_1 character varying(255),
+  address_line_2 character varying(255),
+  city character varying(255),
+  state_province character varying(255),
+  zip_code character varying(20),
+  country character varying(100),
+  latitude numeric(10,7),
+  longitude numeric(10,7),
+  timezone character varying(64) DEFAULT 'America/New_York' NOT NULL,
+  is_24_hours boolean DEFAULT false NOT NULL,
+  is_active boolean DEFAULT true NOT NULL,
+  included_in_subscription boolean DEFAULT true NOT NULL,
+  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT retail_location_pkey PRIMARY KEY (id),
+  CONSTRAINT ux_retail_location__tenant_code UNIQUE (tenant_id, location_code),
+  CONSTRAINT fk_retail_location__tenant_id FOREIGN KEY (tenant_id) REFERENCES public.tenant_organization(tenant_id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_retail_location_tenant ON public.retail_location (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_retail_location_tenant_region ON public.retail_location (tenant_id, region);
+
+COMMENT ON TABLE public.retail_location IS 'Store locations for a retail tenant. One tenant owns 1..N locations. Each location has its own pack.';
+COMMENT ON COLUMN public.retail_location.retailer_type_code IS 'Pack for this store: GAS_STATION, GAS_STATION_ENT, LIQUOR_STORE, DUNKIN_DONUTS, SEVEN_ELEVEN, RESTAURANT, or CLINIC. A tenant''s packs are the distinct codes on its locations. The organization code is only the default for a new location.';
+COMMENT ON COLUMN public.retail_location.included_in_subscription IS 'When true and the location is active, it counts toward the platform subscription quantity.';
+
+CREATE TABLE IF NOT EXISTS public.retail_location_profile (
+  id bigint DEFAULT nextval('public.retail_location_profile_id_seq'::regclass) NOT NULL,
+  tenant_id character varying(255) NOT NULL,
+  location_id bigint NOT NULL,
+  fuel_dispenser_count integer,
+  has_car_wash boolean DEFAULT false NOT NULL,
+  has_lottery boolean DEFAULT false NOT NULL,
+  has_foodservice boolean DEFAULT false NOT NULL,
+  license_expires_on date,
+  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT retail_location_profile_pkey PRIMARY KEY (id),
+  CONSTRAINT ux_retail_location_profile__location UNIQUE (location_id),
+  CONSTRAINT chk_retail_location_profile__dispensers CHECK ((fuel_dispenser_count IS NULL) OR (fuel_dispenser_count >= 0)),
+  CONSTRAINT fk_retail_location_profile__tenant_id FOREIGN KEY (tenant_id) REFERENCES public.tenant_organization(tenant_id) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_retail_location_profile__location_id FOREIGN KEY (location_id) REFERENCES public.retail_location(id) ON DELETE CASCADE
+);
+
+COMMENT ON TABLE public.retail_location_profile IS 'Pack-specific flags for one location. Gas writes dispenser and amenity flags. Liquor writes license_expires_on.';
+COMMENT ON COLUMN public.retail_location_profile.license_expires_on IS 'Liquor license expiry. The engine may remind the owner to renew. It does not judge a sale.';
+
+CREATE TABLE IF NOT EXISTS public.retail_integration (
+  id bigint DEFAULT nextval('public.retail_integration_id_seq'::regclass) NOT NULL,
+  tenant_id character varying(255) NOT NULL,
+  location_id bigint NOT NULL,
+  system_type character varying(32) NOT NULL,
+  provider_name character varying(255),
+  connection_mode character varying(32) DEFAULT 'MANUAL' NOT NULL,
+  config_json text,
+  credentials_ref character varying(512),
+  sync_frequency character varying(32),
+  last_sync_at timestamp with time zone,
+  last_sync_status character varying(32),
+  is_enabled boolean DEFAULT true NOT NULL,
+  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT retail_integration_pkey PRIMARY KEY (id),
+  CONSTRAINT chk_retail_integration__system_type CHECK (
+    system_type IN ('POS', 'FUEL_CONTROLLER', 'INVENTORY', 'PAYROLL_SCHEDULING', 'ACCOUNTING', 'LOTTERY', 'CAR_WASH', 'FOODSERVICE', 'OTHER')
+  ),
+  CONSTRAINT chk_retail_integration__connection_mode CHECK (
+    connection_mode IN ('API', 'FILE_UPLOAD', 'SFTP', 'MANUAL')
+  ),
+  CONSTRAINT fk_retail_integration__tenant_id FOREIGN KEY (tenant_id) REFERENCES public.tenant_organization(tenant_id) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_retail_integration__location_id FOREIGN KEY (location_id) REFERENCES public.retail_location(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_retail_integration_tenant ON public.retail_integration (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_retail_integration_location ON public.retail_integration (location_id);
+
+COMMENT ON TABLE public.retail_integration IS 'Registry of a location''s connected source systems. Raw files stay with the AI engine.';
+COMMENT ON COLUMN public.retail_integration.credentials_ref IS 'Secrets-manager reference. Never store raw credentials.';
+
+CREATE TABLE IF NOT EXISTS public.retail_daily_metrics (
+  id bigint DEFAULT nextval('public.retail_daily_metrics_id_seq'::regclass) NOT NULL,
+  tenant_id character varying(255) NOT NULL,
+  location_id bigint NOT NULL,
+  metric_date date NOT NULL,
+  sales_usd numeric(21,2),
+  transactions_count integer,
+  labor_hours numeric(10,2),
+  labor_cost_usd numeric(21,2),
+  waste_cost_usd numeric(21,2),
+  shrink_cost_usd numeric(21,2),
+  expected_profit_usd numeric(21,2),
+  actual_profit_usd numeric(21,2),
+  metrics_json text,
+  source_model_run_id character varying(128),
+  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT retail_daily_metrics_pkey PRIMARY KEY (id),
+  CONSTRAINT ux_retail_daily_metrics__location_date UNIQUE (location_id, metric_date),
+  CONSTRAINT fk_retail_daily_metrics__tenant_id FOREIGN KEY (tenant_id) REFERENCES public.tenant_organization(tenant_id) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_retail_daily_metrics__location_id FOREIGN KEY (location_id) REFERENCES public.retail_location(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_retail_daily_metrics_tenant_date ON public.retail_daily_metrics (tenant_id, metric_date);
+
+COMMENT ON TABLE public.retail_daily_metrics IS 'Curated per-location daily totals written by the AI engine. Fuel gallons live in retail_fuel_day. Raw receipts are not stored here.';
+
+CREATE TABLE IF NOT EXISTS public.retail_fuel_day (
+  id bigint DEFAULT nextval('public.retail_fuel_day_id_seq'::regclass) NOT NULL,
+  tenant_id character varying(255) NOT NULL,
+  location_id bigint NOT NULL,
+  metric_date date NOT NULL,
+  fuel_gallons_sold numeric(21,2),
+  fuel_revenue_usd numeric(21,2),
+  fuel_margin_cents_per_gallon numeric(8,2),
+  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT retail_fuel_day_pkey PRIMARY KEY (id),
+  CONSTRAINT ux_retail_fuel_day__location_date UNIQUE (location_id, metric_date),
+  CONSTRAINT fk_retail_fuel_day__tenant_id FOREIGN KEY (tenant_id) REFERENCES public.tenant_organization(tenant_id) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_retail_fuel_day__location_id FOREIGN KEY (location_id) REFERENCES public.retail_location(id) ON DELETE CASCADE
+);
+
+COMMENT ON TABLE public.retail_fuel_day IS 'Optional fuel totals for a GAS_STATION location-day. A liquor location has no row here.';
+
+CREATE TABLE IF NOT EXISTS public.retail_department_day (
+  id bigint DEFAULT nextval('public.retail_department_day_id_seq'::regclass) NOT NULL,
+  tenant_id character varying(255) NOT NULL,
+  location_id bigint NOT NULL,
+  metric_date date NOT NULL,
+  department character varying(32) NOT NULL,
+  sales_usd numeric(21,2),
+  units numeric(21,2),
+  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT retail_department_day_pkey PRIMARY KEY (id),
+  CONSTRAINT ux_retail_department_day__location_date_dept UNIQUE (location_id, metric_date, department),
+  CONSTRAINT chk_retail_department_day__department CHECK (
+    department IN ('BEER', 'WINE', 'SPIRITS', 'FUEL', 'IN_STORE', 'LOTTERY', 'FOODSERVICE', 'CAR_WASH', 'OTHER')
+  ),
+  CONSTRAINT fk_retail_department_day__tenant_id FOREIGN KEY (tenant_id) REFERENCES public.tenant_organization(tenant_id) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_retail_department_day__location_id FOREIGN KEY (location_id) REFERENCES public.retail_location(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_retail_department_day_location_date ON public.retail_department_day (location_id, metric_date);
+
+COMMENT ON TABLE public.retail_department_day IS 'Department sales for one location-day. Liquor rules read BEER, WINE, and SPIRITS. Gas fuel rules do not require this table.';
+
+CREATE TABLE IF NOT EXISTS public.retail_recommendation (
+  id bigint DEFAULT nextval('public.retail_recommendation_id_seq'::regclass) NOT NULL,
+  tenant_id character varying(255) NOT NULL,
+  location_id bigint,
+  recommendation_date date NOT NULL,
+  category character varying(32) NOT NULL,
+  title character varying(500) NOT NULL,
+  detail text,
+  estimated_impact_usd numeric(21,2),
+  priority integer,
+  confidence_pct numeric(5,2),
+  explanation text,
+  status character varying(32) DEFAULT 'NEW' NOT NULL,
+  owner_feedback character varying(2000),
+  source_model_run_id character varying(128),
+  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT retail_recommendation_pkey PRIMARY KEY (id),
+  CONSTRAINT chk_retail_recommendation__category CHECK (
+    category IN ('FUEL_PRICING', 'ORDERING', 'STAFFING', 'INVENTORY', 'LOSS_PREVENTION', 'MAINTENANCE', 'ANOMALY', 'COMPLIANCE', 'OTHER')
+  ),
+  CONSTRAINT chk_retail_recommendation__status CHECK (
+    status IN ('NEW', 'VIEWED', 'ACCEPTED', 'DISMISSED', 'COMPLETED')
+  ),
+  CONSTRAINT chk_retail_recommendation__confidence CHECK (
+    (confidence_pct IS NULL) OR (confidence_pct >= 0 AND confidence_pct <= 100)
+  ),
+  CONSTRAINT fk_retail_recommendation__tenant_id FOREIGN KEY (tenant_id) REFERENCES public.tenant_organization(tenant_id) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_retail_recommendation__location_id FOREIGN KEY (location_id) REFERENCES public.retail_location(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_retail_recommendation_tenant_date ON public.retail_recommendation (tenant_id, recommendation_date);
+CREATE INDEX IF NOT EXISTS idx_retail_recommendation_location_date ON public.retail_recommendation (location_id, recommendation_date);
+
+COMMENT ON TABLE public.retail_recommendation IS 'Morning action cards from the AI engine. location_id NULL is a chain-level card.';
+COMMENT ON COLUMN public.retail_recommendation.location_id IS 'NULL = tenant-level card. Non-null = one location.';
+
+CREATE TABLE IF NOT EXISTS public.retail_user_location_assignment (
+  id bigint DEFAULT nextval('public.retail_user_location_assignment_id_seq'::regclass) NOT NULL,
+  tenant_id character varying(255) NOT NULL,
+  user_profile_id bigint NOT NULL,
+  location_id bigint NOT NULL,
+  assigned_by_user_profile_id bigint,
+  notes character varying(500),
+  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT retail_user_location_assignment_pkey PRIMARY KEY (id),
+  CONSTRAINT ux_retail_user_location_assignment__tenant_user_location UNIQUE (tenant_id, user_profile_id, location_id),
+  CONSTRAINT fk_retail_user_location_assignment__tenant_id FOREIGN KEY (tenant_id) REFERENCES public.tenant_organization(tenant_id) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_retail_user_location_assignment__user_profile FOREIGN KEY (user_profile_id) REFERENCES public.user_profile(id) ON DELETE CASCADE,
+  CONSTRAINT fk_retail_user_location_assignment__location FOREIGN KEY (location_id) REFERENCES public.retail_location(id) ON DELETE CASCADE,
+  CONSTRAINT fk_retail_user_location_assignment__assigned_by FOREIGN KEY (assigned_by_user_profile_id) REFERENCES public.user_profile(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_retail_user_location_assignment_tenant_user
+  ON public.retail_user_location_assignment (tenant_id, user_profile_id);
+CREATE INDEX IF NOT EXISTS idx_retail_user_location_assignment_tenant_location
+  ON public.retail_user_location_assignment (tenant_id, location_id);
+
+COMMENT ON TABLE public.retail_user_location_assignment IS 'Which retail_location rows a RETAIL_STORE_MANAGER may access. Scope ALL sees every location without a row here.';
+
+CREATE TABLE IF NOT EXISTS public.retail_user_region_assignment (
+  id bigint DEFAULT nextval('public.retail_user_region_assignment_id_seq'::regclass) NOT NULL,
+  tenant_id character varying(255) NOT NULL,
+  user_profile_id bigint NOT NULL,
+  region character varying(255) NOT NULL,
+  assigned_by_user_profile_id bigint,
+  notes character varying(500),
+  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT retail_user_region_assignment_pkey PRIMARY KEY (id),
+  CONSTRAINT ux_retail_user_region_assignment__tenant_user_region UNIQUE (tenant_id, user_profile_id, region),
+  CONSTRAINT fk_retail_user_region_assignment__tenant_id FOREIGN KEY (tenant_id) REFERENCES public.tenant_organization(tenant_id) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_retail_user_region_assignment__user_profile FOREIGN KEY (user_profile_id) REFERENCES public.user_profile(id) ON DELETE CASCADE,
+  CONSTRAINT fk_retail_user_region_assignment__assigned_by FOREIGN KEY (assigned_by_user_profile_id) REFERENCES public.user_profile(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_retail_user_region_assignment_tenant_user
+  ON public.retail_user_region_assignment (tenant_id, user_profile_id);
+
+COMMENT ON TABLE public.retail_user_region_assignment IS 'Regions a RETAIL_REGIONAL_MANAGER may see. A store is included when retail_location.region matches. A blank region on a store is not included.';
