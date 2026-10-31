@@ -1041,6 +1041,20 @@ CREATE SEQUENCE IF NOT EXISTS public.retailer_type_id_seq
     START WITH 1
     CACHE 1;
 
+CREATE SEQUENCE IF NOT EXISTS public.retailer_size_band_id_seq
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    START WITH 1
+    CACHE 1;
+
+CREATE SEQUENCE IF NOT EXISTS public.recommendation_category_id_seq
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    START WITH 1
+    CACHE 1;
+
 CREATE SEQUENCE IF NOT EXISTS public.communication_campaign_id_seq
     INCREMENT BY 1
     NO MINVALUE
@@ -3101,6 +3115,8 @@ CREATE TABLE public.tenant_organization (
                                             country character varying(100),
                                             website_url character varying(1024),
                                             site_type character varying(64) DEFAULT 'EVENT_ORG' NOT NULL,
+                                            retailer_type_code character varying(64),
+                                            retailer_size_band_code character varying(64),
                                             site_template_version character varying(32),
                                             is_active boolean DEFAULT true,
                                             created_at timestamp without time zone DEFAULT now() NOT NULL,
@@ -4068,7 +4084,10 @@ INSERT INTO public.access_role (tenant_id, code, label, sort_order, is_active, g
     (NULL, 'GAS_STATION_MANAGER', 'Gas station manager', 4, true, false, false, 'ASSIGNED'),
     (NULL, 'ORGANIZER', 'Organizer', 5, true, false, false, 'NONE'),
     (NULL, 'VOLUNTEER', 'Volunteer', 6, true, false, false, 'NONE'),
-    (NULL, 'MEMBER', 'Member', 7, true, false, false, 'NONE');
+    (NULL, 'MEMBER', 'Member', 7, true, false, false, 'NONE'),
+    (NULL, 'RETAIL_OWNER', 'Retail owner', 8, true, false, false, 'ALL'),
+    (NULL, 'RETAIL_REGIONAL_MANAGER', 'Retail regional manager', 9, true, false, false, 'ASSIGNED'),
+    (NULL, 'RETAIL_STORE_MANAGER', 'Retail store manager', 10, true, false, false, 'ASSIGNED');
 
 INSERT INTO public.retailer_type (tenant_id, code, label, hint, module_key, sort_order, is_active) VALUES
     (NULL, 'EVENT_ORG', 'Events organization', 'Community groups, associations, event organizers', 'EVENT', 1, true),
@@ -4077,11 +4096,67 @@ INSERT INTO public.retailer_type (tenant_id, code, label, hint, module_key, sort
     (NULL, 'MUSIC_BAND', 'Music band', 'Bands, choirs, performances', 'MUSIC', 4, true),
     (NULL, 'PERSONAL_PROFILE', 'Personal profile', 'Individual professional or personal site', 'PROFILE', 5, true),
     (NULL, 'HYBRID', 'Hybrid', 'Profile plus events', 'HYBRID', 6, true),
-    (NULL, 'GAS_STATION', 'Gas station', 'Fuel station operations', 'GAS_STATION', 7, true),
-    (NULL, 'GAS_STATION_ENT', 'Gas station enterprise', 'Multi-site gas station group', 'GAS_STATION', 8, true),
+    (NULL, 'GAS_STATION', 'Gas station', 'Fuel station operations', 'RETAIL', 7, true),
+    (NULL, 'GAS_STATION_ENT', 'Gas station enterprise', 'Retired. Size is a retailer_size_band on GAS_STATION.', 'RETAIL', 8, false),
     (NULL, 'LIQUOR_STORE', 'Liquor store', 'Beer, wine, and spirits shop', 'RETAIL', 9, true),
     (NULL, 'DUNKIN_DONUTS', 'Dunkin Donuts', 'Coffee and donut shop', 'RETAIL', 10, true),
-    (NULL, 'SEVEN_ELEVEN', 'Seven-Eleven', 'Convenience store', 'RETAIL', 11, true);
+    (NULL, 'SEVEN_ELEVEN', 'Seven-Eleven', 'Convenience store', 'RETAIL', 11, true),
+    (NULL, 'RETAIL', 'Retail', 'Shop archetype for gas, liquor, and other retail packs', 'RETAIL', 12, true),
+    (NULL, 'RESTAURANT', 'Restaurant', 'Restaurant chain. Food starts as a FOODSERVICE register line', 'RETAIL', 13, true),
+    (NULL, 'CLINIC', 'Clinic', 'Clinic placeholder. Visits stay off the shop tables until a visit file exists', 'RETAIL', 14, true);
+
+CREATE TABLE public.retailer_size_band (
+    id bigint DEFAULT nextval('public.retailer_size_band_id_seq'::regclass) NOT NULL,
+    retailer_type_code character varying(64) NOT NULL,
+    code character varying(64) NOT NULL,
+    label character varying(255) NOT NULL,
+    min_locations integer NOT NULL,
+    max_locations integer,
+    sort_order integer DEFAULT 0 NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT retailer_size_band_pkey PRIMARY KEY (id),
+    CONSTRAINT ux_retailer_size_band__type_code UNIQUE (retailer_type_code, code),
+    CONSTRAINT chk_retailer_size_band__range CHECK (max_locations IS NULL OR max_locations >= min_locations)
+);
+
+COMMENT ON TABLE public.retailer_size_band IS 'Size band for one retailer_type. Chosen from the retail_location count for that pack. Fuel rules ignore the band.';
+
+INSERT INTO public.retailer_size_band (retailer_type_code, code, label, min_locations, max_locations, sort_order, is_active) VALUES
+    ('GAS_STATION', 'SINGLE', 'Single site', 1, 4, 1, true),
+    ('GAS_STATION', 'MID', 'Mid size', 5, 10, 2, true),
+    ('GAS_STATION', 'ENTERPRISE', 'Enterprise', 11, NULL, 3, true),
+    ('LIQUOR_STORE', 'STANDARD', 'Standard', 1, NULL, 1, true),
+    ('DUNKIN_DONUTS', 'STANDARD', 'Standard', 1, NULL, 1, true),
+    ('SEVEN_ELEVEN', 'STANDARD', 'Standard', 1, NULL, 1, true),
+    ('RESTAURANT', 'STANDARD', 'Standard', 1, NULL, 1, true),
+    ('CLINIC', 'STANDARD', 'Standard', 1, NULL, 1, true);
+
+CREATE TABLE public.recommendation_category (
+    id bigint DEFAULT nextval('public.recommendation_category_id_seq'::regclass) NOT NULL,
+    code character varying(32) NOT NULL,
+    label character varying(255) NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT recommendation_category_pkey PRIMARY KEY (id),
+    CONSTRAINT ux_recommendation_category__code UNIQUE (code)
+);
+
+COMMENT ON TABLE public.recommendation_category IS 'Lookup for retail_recommendation.category. A new card kind is a row here.';
+
+INSERT INTO public.recommendation_category (code, label, sort_order, is_active) VALUES
+    ('FUEL_PRICING', 'Fuel pricing', 1, true),
+    ('ORDERING', 'Ordering', 2, true),
+    ('STAFFING', 'Staffing', 3, true),
+    ('INVENTORY', 'Inventory', 4, true),
+    ('LOSS_PREVENTION', 'Loss prevention', 5, true),
+    ('MAINTENANCE', 'Maintenance', 6, true),
+    ('ANOMALY', 'Anomaly', 7, true),
+    ('COMPLIANCE', 'Compliance', 8, true),
+    ('OTHER', 'Other', 9, true);
 
 -- Create team_groups table (sports squad / music band roster metadata)
 CREATE TABLE public.team_groups (
@@ -7714,6 +7789,18 @@ SELECT pg_catalog.setval(
     GREATEST(COALESCE((SELECT MAX(id) FROM public.retailer_type), 1), 1),
     true
 );
+-- retailer_size_band
+SELECT pg_catalog.setval(
+    'public.retailer_size_band_id_seq',
+    GREATEST(COALESCE((SELECT MAX(id) FROM public.retailer_size_band), 1), 1),
+    true
+);
+-- recommendation_category
+SELECT pg_catalog.setval(
+    'public.recommendation_category_id_seq',
+    GREATEST(COALESCE((SELECT MAX(id) FROM public.recommendation_category), 1), 1),
+    true
+);
 -- communication_campaign
 SELECT pg_catalog.setval(
     'public.communication_campaign_id_seq',
@@ -8056,7 +8143,7 @@ CREATE INDEX IF NOT EXISTS idx_retail_location_tenant ON public.retail_location 
 CREATE INDEX IF NOT EXISTS idx_retail_location_tenant_region ON public.retail_location (tenant_id, region);
 
 COMMENT ON TABLE public.retail_location IS 'Store locations for a retail tenant. One tenant owns 1..N locations. Each location has its own pack.';
-COMMENT ON COLUMN public.retail_location.retailer_type_code IS 'Pack for this store: GAS_STATION, GAS_STATION_ENT, LIQUOR_STORE, DUNKIN_DONUTS, SEVEN_ELEVEN, RESTAURANT, or CLINIC. A tenant''s packs are the distinct codes on its locations. The organization code is only the default for a new location.';
+COMMENT ON COLUMN public.retail_location.retailer_type_code IS 'Pack for this store: GAS_STATION, LIQUOR_STORE, DUNKIN_DONUTS, SEVEN_ELEVEN, RESTAURANT, or CLINIC. A tenant''s packs are the distinct codes on its locations. The organization code is only the default for a new location.';
 COMMENT ON COLUMN public.retail_location.included_in_subscription IS 'When true and the location is active, it counts toward the platform subscription quantity.';
 
 CREATE TABLE IF NOT EXISTS public.retail_location_profile (
@@ -8198,9 +8285,6 @@ CREATE TABLE IF NOT EXISTS public.retail_recommendation (
   created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
   updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
   CONSTRAINT retail_recommendation_pkey PRIMARY KEY (id),
-  CONSTRAINT chk_retail_recommendation__category CHECK (
-    category IN ('FUEL_PRICING', 'ORDERING', 'STAFFING', 'INVENTORY', 'LOSS_PREVENTION', 'MAINTENANCE', 'ANOMALY', 'COMPLIANCE', 'OTHER')
-  ),
   CONSTRAINT chk_retail_recommendation__status CHECK (
     status IN ('NEW', 'VIEWED', 'ACCEPTED', 'DISMISSED', 'COMPLETED')
   ),
