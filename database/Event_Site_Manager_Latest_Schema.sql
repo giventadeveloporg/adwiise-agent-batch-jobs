@@ -1041,6 +1041,13 @@ CREATE SEQUENCE IF NOT EXISTS public.retailer_type_id_seq
     START WITH 1
     CACHE 1;
 
+CREATE SEQUENCE IF NOT EXISTS public.site_type_catalog_id_seq
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    START WITH 1
+    CACHE 1;
+
 CREATE SEQUENCE IF NOT EXISTS public.retailer_size_band_id_seq
     INCREMENT BY 1
     NO MINVALUE
@@ -4053,6 +4060,7 @@ CREATE TABLE public.retailer_type (
     label character varying(255) NOT NULL,
     hint character varying(255),
     module_key character varying(32) DEFAULT 'EVENT' NOT NULL,
+    site_type_code character varying(64) DEFAULT 'RETAIL' NOT NULL,
     sort_order integer DEFAULT 0 NOT NULL,
     is_active boolean DEFAULT true NOT NULL,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -4065,7 +4073,8 @@ CREATE UNIQUE INDEX ux_retailer_type__global_code ON public.retailer_type (code)
 CREATE UNIQUE INDEX ux_retailer_type__tenant_code ON public.retailer_type (tenant_id, code) WHERE tenant_id IS NOT NULL;
 CREATE INDEX idx_retailer_type_tenant_active ON public.retailer_type (tenant_id, is_active, sort_order);
 
-COMMENT ON TABLE public.retailer_type IS 'Assignable tenant_organization.site_type values, including community site kinds and retailer kinds such as gas stations and shops. module_key selects homepage presets.';
+COMMENT ON TABLE public.retailer_type IS 'Shop pack for a site type. Fuel and register rules follow this code. Size is retailer_size_band.';
+COMMENT ON COLUMN public.retailer_type.site_type_code IS 'Parent site type. Shop packs use RETAIL.';
 
 CREATE TRIGGER trg_access_role_updated_at
     BEFORE UPDATE ON public.access_role
@@ -4089,21 +4098,45 @@ INSERT INTO public.access_role (tenant_id, code, label, sort_order, is_active, g
     (NULL, 'RETAIL_REGIONAL_MANAGER', 'Retail regional manager', 9, true, false, false, 'ASSIGNED'),
     (NULL, 'RETAIL_STORE_MANAGER', 'Retail store manager', 10, true, false, false, 'ASSIGNED');
 
-INSERT INTO public.retailer_type (tenant_id, code, label, hint, module_key, sort_order, is_active) VALUES
+CREATE TABLE public.site_type_catalog (
+    id bigint DEFAULT nextval('public.site_type_catalog_id_seq'::regclass) NOT NULL,
+    tenant_id character varying(255),
+    code character varying(64) NOT NULL,
+    label character varying(255) NOT NULL,
+    hint character varying(255),
+    module_key character varying(32) DEFAULT 'EVENT' NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT site_type_catalog_pkey PRIMARY KEY (id),
+    CONSTRAINT fk_site_type_catalog__tenant_id FOREIGN KEY (tenant_id) REFERENCES public.tenant_organization(tenant_id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+CREATE UNIQUE INDEX ux_site_type_catalog__global_code ON public.site_type_catalog (code) WHERE tenant_id IS NULL;
+CREATE UNIQUE INDEX ux_site_type_catalog__tenant_code ON public.site_type_catalog (tenant_id, code) WHERE tenant_id IS NOT NULL;
+CREATE INDEX idx_site_type_catalog_tenant_active ON public.site_type_catalog (tenant_id, is_active, sort_order);
+COMMENT ON TABLE public.site_type_catalog IS 'Assignable tenant_organization.site_type. RETAIL is the shop archetype. Packs live in retailer_type.';
+CREATE TRIGGER trg_site_type_catalog_updated_at
+    BEFORE UPDATE ON public.site_type_catalog
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+INSERT INTO public.site_type_catalog (tenant_id, code, label, hint, module_key, sort_order, is_active) VALUES
     (NULL, 'EVENT_ORG', 'Events organization', 'Community groups, associations, event organizers', 'EVENT', 1, true),
     (NULL, 'CHURCH_ORG', 'Church / parish', 'Parish news, services, events and documents', 'CHURCH', 2, true),
     (NULL, 'SPORTS_TEAM', 'Sports team', 'Teams, squads, fixtures', 'SPORTS', 3, true),
     (NULL, 'MUSIC_BAND', 'Music band', 'Bands, choirs, performances', 'MUSIC', 4, true),
     (NULL, 'PERSONAL_PROFILE', 'Personal profile', 'Individual professional or personal site', 'PROFILE', 5, true),
     (NULL, 'HYBRID', 'Hybrid', 'Profile plus events', 'HYBRID', 6, true),
-    (NULL, 'GAS_STATION', 'Gas station', 'Fuel station operations', 'RETAIL', 7, true),
-    (NULL, 'GAS_STATION_ENT', 'Gas station enterprise', 'Retired. Size is a retailer_size_band on GAS_STATION.', 'RETAIL', 8, false),
-    (NULL, 'LIQUOR_STORE', 'Liquor store', 'Beer, wine, and spirits shop', 'RETAIL', 9, true),
-    (NULL, 'DUNKIN_DONUTS', 'Dunkin Donuts', 'Coffee and donut shop', 'RETAIL', 10, true),
-    (NULL, 'SEVEN_ELEVEN', 'Seven-Eleven', 'Convenience store', 'RETAIL', 11, true),
-    (NULL, 'RETAIL', 'Retail', 'Shop archetype for gas, liquor, and other retail packs', 'RETAIL', 12, true),
-    (NULL, 'RESTAURANT', 'Restaurant', 'Restaurant chain. Food starts as a FOODSERVICE register line', 'RETAIL', 13, true),
-    (NULL, 'CLINIC', 'Clinic', 'Clinic placeholder. Visits stay off the shop tables until a visit file exists', 'RETAIL', 14, true);
+    (NULL, 'RETAIL', 'Retail', 'Shop archetype for gas, liquor, and other retail packs', 'RETAIL', 7, true);
+
+INSERT INTO public.retailer_type (tenant_id, code, label, hint, module_key, site_type_code, sort_order, is_active) VALUES
+    (NULL, 'GAS_STATION', 'Gas station', 'Fuel station operations', 'RETAIL', 'RETAIL', 1, true),
+    (NULL, 'LIQUOR_STORE', 'Liquor store', 'Beer, wine, and spirits shop', 'RETAIL', 'RETAIL', 2, true),
+    (NULL, 'DUNKIN_DONUTS', 'Dunkin Donuts', 'Coffee and donut shop', 'RETAIL', 'RETAIL', 3, true),
+    (NULL, 'SEVEN_ELEVEN', 'Seven-Eleven', 'Convenience store', 'RETAIL', 'RETAIL', 4, true),
+    (NULL, 'RESTAURANT', 'Restaurant', 'Restaurant chain. Food starts as a FOODSERVICE register line', 'RETAIL', 'RETAIL', 5, true),
+    (NULL, 'CLINIC', 'Clinic', 'Clinic placeholder. Visits stay off the shop tables until a visit file exists', 'RETAIL', 'RETAIL', 6, true);
 
 CREATE TABLE public.retailer_size_band (
     id bigint DEFAULT nextval('public.retailer_size_band_id_seq'::regclass) NOT NULL,
@@ -7781,6 +7814,12 @@ SELECT pg_catalog.setval(
 SELECT pg_catalog.setval(
     'public.access_role_id_seq',
     GREATEST(COALESCE((SELECT MAX(id) FROM public.access_role), 1), 1),
+    true
+);
+-- site_type_catalog
+SELECT pg_catalog.setval(
+    'public.site_type_catalog_id_seq',
+    GREATEST(COALESCE((SELECT MAX(id) FROM public.site_type_catalog), 1), 1),
     true
 );
 -- retailer_type
