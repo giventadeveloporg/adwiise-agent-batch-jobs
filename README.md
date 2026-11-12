@@ -258,7 +258,8 @@ ResponseEntity<BatchJobResponse> response = restTemplate.postForEntity(
 
 - **Health Endpoint**: `/batch-jobs/actuator/health`
 - **Metrics**: `/batch-jobs/actuator/prometheus`
-- **Job Execution History**: Query `batch_job_execution` table
+- **Job Execution History**: Query `batch_job_execution` joined to `batch_job_instance` (`start_time`, not `started_at`)
+- **Scheduled jobs**: Purpose, UTC cron, enable flags, and which tables each job writes are in [documentation/scheduled-batch-jobs.html](documentation/scheduled-batch-jobs.html)
 
 ## Development
 
