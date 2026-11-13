@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Purpose, UTC schedule, enable flags, and database tables for the five in-process scheduled batch jobs.">
+    <title>Scheduled batch jobs</title>
+    <style>
+        body {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            font-size: 1em;
+            background: #fff;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            border-bottom: 3px solid #0066cc;
+            padding-bottom: 10px;
+            color: #0d3b66;
+        }
+
+        h2 {
+            font-size: 1.8em;
+            border-left: 4px solid #0066cc;
+            padding-left: 15px;
+            color: #0d3b66;
+        }
+
+        h3 {
+            font-size: 1.4em;
+            color: #333;
+        }
+
+        a {
+            color: #0052a3;
+        }
+
+        a:focus,
+        button:focus {
+            outline: 3px solid #0066cc;
+            outline-offset: 2px;
+        }
+
+        .toc {
+            background: linear-gradient(135deg, #f0f7ff 0%, #e6f2ff 100%);
+            border-left: 4px solid #0066cc;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .toc ul {
+            margin: 0;
+        }
+
+        code,
+        .code-highlight {
+            background-color: #e8f4f8;
+            color: #0d3b66;
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid #b8d4e3;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        pre,
+        pre code {
+            background-color: #e8f4f8;
+            color: #0d3b66;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #b8d4e3;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+        }
+
+        pre code {
+            background-color: transparent;
+            border: none;
+            padding: 0;
+        }
+
+        .section-intro {
+            background: linear-gradient(135deg, #e8f4f8 0%, #d1e7f0 100%);
+            border-left: 4px solid #0066cc;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0, 102, 204, 0.1);
+        }
+
+        .section-intro code {
+            background-color: #e8f4f8;
+            color: #0d3b66;
+            padding: 3px 8px;
+            border-radius: 3px;
+            border: 1px solid #b8d4e3;
+        }
+
+        .section-container {
+            background: linear-gradient(135deg, #f0f7ff 0%, #e6f2ff 100%);
+            border-left: 4px solid #0066cc;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0, 102, 204, 0.1);
+        }
+
+        .section-container.parameters {
+            background: linear-gradient(135deg, #fff5e6 0%, #ffe6cc 100%);
+            border-left-color: #ff9800;
+        }
+
+        .section-container.output {
+            background: linear-gradient(135deg, #e6ffe6 0%, #ccffcc 100%);
+            border-left-color: #28a745;
+        }
+
+        .section-container.usage {
+            background: linear-gradient(135deg, #f0e6ff 0%, #e6ccff 100%);
+            border-left-color: #9c27b0;
+        }
+
+        .section-header {
+            background: linear-gradient(135deg, #0066cc 0%, #0052a3 100%);
+            color: white;
+            padding: 12px 20px;
+            margin: -20px -20px 20px -20px;
+            border-radius: 8px 8px 0 0;
+            font-size: 1.2em;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-header.parameters {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+        }
+
+        .section-header.output {
+            background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+        }
+
+        .section-header.usage {
+            background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%);
+        }
+
+        .script-name {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            display: inline-block;
+            box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+            border: none;
+        }
+
+        .parameters-list {
+            background: linear-gradient(135deg, #fff5e6 0%, #ffe6cc 100%);
+            border-left: 4px solid #ff9800;
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin: 15px 0;
+        }
+
+        .parameters-list strong {
+            color: #c05600;
+            font-weight: bold;
+        }
+
+        .parameters-list code {
+            background-color: #e8f4f8;
+            color: #0d3b66;
+            padding: 3px 8px;
+            border-radius: 3px;
+            border: 1px solid #b8d4e3;
+        }
+
+        .info,
+        .warning,
+        .success {
+            border-radius: 8px;
+            padding: 16px 18px;
+            margin: 16px 0;
+        }
+
+        .info {
+            background: #d1ecf1;
+            border-left: 4px solid #0c5460;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+
+        .success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+
+        .info code,
+        .info .code-highlight,
+        .warning code,
+        .warning .code-highlight,
+        .success code,
+        .success .code-highlight {
+            background-color: #e8f4f8;
+            color: #0d3b66;
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid #b8d4e3;
+            font-family: 'Courier New', monospace;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 15px 0;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: linear-gradient(135deg, #0066cc 0%, #0052a3 100%);
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.9em;
+            letter-spacing: 0.5px;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        tr:hover {
+            background-color: #e3f2fd;
+            transition: background-color 0.2s ease;
+        }
+
+        td code {
+            background-color: #e8f4f8;
+            color: #0d3b66;
+            padding: 3px 8px;
+            border-radius: 3px;
+            border: 1px solid #b8d4e3;
+            font-family: 'Courier New', monospace;
+        }
+
+        .command-block {
+            border: 2px solid #4caf50;
+            border-radius: 8px;
+            margin: 16px 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+        }
+
+        .command-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.45);
+        }
+
+        .command-type {
+            font-weight: bold;
+            color: #1e7e34;
+        }
+
+        .command-header-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .copy-button,
+        .copy-button-template {
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .copy-button {
+            background-color: #0066cc;
+        }
+
+        .copy-button:hover {
+            background-color: #0052a3;
+            transform: translateY(-1px);
+        }
+
+        .copy-button-template {
+            background-color: #6c757d;
+        }
+
+        .copy-button-template:hover {
+            background-color: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .copy-button.copied,
+        .copy-button-template.copied {
+            background-color: #28a745;
+        }
+
+        .command-content {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .command-single-line {
+            background: #e8f4f8;
+            color: #0d3b66;
+            border-top: 1px solid #b8d4e3;
+            padding: 12px 15px;
+            border-radius: 0 0 4px 4px;
+        }
+
+        .command-single-line-label {
+            display: block;
+            font-weight: bold;
+            color: #0c5460;
+            margin-bottom: 6px;
+        }
+
+        .command-single-line code {
+            display: block;
+            background: transparent;
+            border: none;
+            padding: 0;
+            color: #0d3b66;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .command-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Scheduled batch jobs</h1>
+
+        <div class="section-intro">
+            <p>Five jobs are scheduled inside the running <code class="code-highlight">adwiise-agent-batch-jobs</code> process. They are not EventBridge tasks and they are not turned off by an empty Stripe API key. Only subscription renewal writes Spring Batch history rows in <code class="code-highlight">batch_job_execution</code> and <code class="code-highlight">batch_step_execution</code>.</p>
+        </div>
+
+        <nav class="toc" aria-label="Table of contents">
+            <h2>Contents</h2>
+            <ul>
+                <li><a href="#what-keeps-them-running">What keeps them running</a></li>
+                <li><a href="#two-history-tables">Two different history tables</a></li>
+                <li><a href="#schedule">Schedule, purpose, and tables written</a></li>
+                <li><a href="#six-row-window">Why six rows appear from 05:59 to 18:00</a></li>
+                <li><a href="#other-machine">Why another machine stays empty</a></li>
+                <li><a href="#configuration">Enable flags and cron properties</a></li>
+                <li><a href="#query">Query the Spring Batch rows</a></li>
+            </ul>
+        </nav>
+
+        <div class="section-container" id="what-keeps-them-running">
+            <div class="section-header">What keeps them running</div>
+            <p><code class="script-name">BatchJobsApplication.java</code> and <code class="script-name">BatchConfig.java</code> both enable Spring scheduling. <code class="script-name">BatchJobScheduler.java</code> registers the five <code class="code-highlight">@Scheduled</code> methods. A scheduler thread inside that JVM fires them for as long as the process stays up.</p>
+            <p><code class="code-highlight">restart: unless-stopped</code> in <code class="script-name">docker-compose.yml</code> only starts the container again after Docker restarts. It does not run jobs while the container is stopped.</p>
+            <div class="info">
+                <strong>Clock:</strong> Spring evaluates cron on the JVM clock. This image does not set <code class="code-highlight">TZ</code>, so the hours below are UTC. A container with a different timezone fires at different UTC times even with the same expression.
+            </div>
+        </div>
+
+        <div class="section-container usage" id="two-history-tables">
+            <div class="section-header usage">Two different history tables</div>
+            <p>PostgreSQL stores the Spring Batch prefix <code class="code-highlight">BATCH_</code> as lowercase. Those framework tables are not the application audit log.</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Table</th>
+                        <th>Who writes it</th>
+                        <th>When a row appears</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>batch_job_execution</code> and <code>batch_step_execution</code></td>
+                        <td>Spring Batch <code>jobLauncher.run()</code></td>
+                        <td>Only when a Spring Batch job is launched. Today that is <code>subscriptionRenewalJob</code> on the schedule.</td>
+                    </tr>
+                    <tr>
+                        <td><code>batch_job_execution_log</code></td>
+                        <td><code>BatchJobExecution</code> via <code>BatchJobExecutionService</code></td>
+                        <td>Application audit row. Subscription renewal, Stripe fees and tax, and manual payment summary write here. Email batch and platform billing lock do not.</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="warning">
+                <strong>Do not use <code class="code-highlight">started_at</code>.</strong> <code class="script-name">QUICK_START.md</code> queries that column. Spring Batch stores the start in <code class="code-highlight">start_time</code>. The job name is on <code class="code-highlight">batch_job_instance</code>, not on <code class="code-highlight">batch_job_execution</code>.
+            </div>
+        </div>
+
+        <div class="section-container" id="schedule">
+            <div class="section-header">Schedule, purpose, and tables written</div>
+            <p>Defaults come from <code class="script-name">application.yml</code> except platform billing lock, whose cron exists only as the annotation default in <code class="script-name">BatchJobScheduler.java</code>. An empty <code class="code-highlight">STRIPE_DEFAULT_API_KEY</code> does not disable any of these methods.</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>UTC</th>
+                        <th>Job</th>
+                        <th>Default</th>
+                        <th>Purpose</th>
+                        <th>Spring Batch tables</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>0 0 */6 * * *</code><br>00:00, 06:00, 12:00, 18:00</td>
+                        <td>Subscription renewal<br><code>subscriptionRenewalJob</code></td>
+                        <td><code>SUBSCRIPTION_RENEWAL_ENABLED=true</code></td>
+                        <td>Loads distinct membership-subscription tenants and launches one Spring Batch job per tenant. Renews subscriptions that are inside the configured days-before window.</td>
+                        <td>Yes. Also writes <code>batch_job_execution_log</code>.</td>
+                    </tr>
+                    <tr>
+                        <td><code>0 0 2 * * *</code><br>02:00</td>
+                        <td>Email batch</td>
+                        <td><code>EMAIL_BATCH_ENABLED=true</code></td>
+                        <td>Logs that a template id is required and returns. Real email jobs are started from the API with a template. This schedule does not call <code>jobLauncher</code>.</td>
+                        <td>No.</td>
+                    </tr>
+                    <tr>
+                        <td><code>0 0 2 * * *</code><br>02:00</td>
+                        <td>Stripe fees and tax</td>
+                        <td><code>STRIPE_FEES_TAX_ENABLED=true</code></td>
+                        <td>Reads Stripe fee and tax onto event ticket transactions. The scheduled path uses the current month and skips transactions newer than 14 days so the Stripe payout can settle. Zero matching transactions still means the method ran.</td>
+                        <td>No. Writes <code>batch_job_execution_log</code> and updates ticket rows when there is work.</td>
+                    </tr>
+                    <tr>
+                        <td><code>0 0 2 * * *</code><br>02:00</td>
+                        <td>Manual payment summary</td>
+                        <td><code>MANUAL_PAYMENT_SUMMARY_ENABLED=true</code></td>
+                        <td>Rebuilds the daily snapshot of fee-free manual payments in <code>manual_payment_summary_report</code>.</td>
+                        <td>No. Writes <code>batch_job_execution_log</code>.</td>
+                    </tr>
+                    <tr>
+                        <td><code>0 30 2 * * *</code><br>02:30</td>
+                        <td>Platform billing lock</td>
+                        <td>No enable flag. Always scheduled.</td>
+                        <td>Locks tenant product billing rows whose grace period or one-time paid-through date has passed. Complimentary rows are never locked.</td>
+                        <td>No.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section-container output" id="six-row-window">
+            <div class="section-header output">Why six rows appear from 05:59 to 18:00</div>
+            <p>On this database the renewal job finds two tenants and launches them in that order: <code class="code-highlight">tenant_demo_002</code>, then <code class="code-highlight">mosc_malankara_orthodox_2</code>. Each launch inserts one job row and one step row. The first tenant starts a fraction of a second before the hour, so a 06:00 fire is stored as <code class="code-highlight">05:59:59</code>.</p>
+            <p>Three daytime ticks (06:00, 12:00, 18:00) times two tenants is six rows in both Spring Batch tables. The 00:00 pair is the same job and sits outside that window. On 2026-11-12 the last of those rows finished at 18:00 UTC. The next fire is 00:00 UTC.</p>
+            <div class="success">
+                <strong>Observed on this container:</strong> every one of those rows was <code class="code-highlight">subscriptionRenewalJob</code> with status <code class="code-highlight">COMPLETED</code>. The 02:00 and 02:30 jobs ran in the same process and did not insert those six rows.
+            </div>
+        </div>
+
+        <div class="section-container" id="other-machine">
+            <div class="section-header">Why another machine stays empty</div>
+            <p>These rows live in the Postgres database named by <code class="code-highlight">RDS_ENDPOINT</code> and <code class="code-highlight">DB_NAME</code>. This container uses <code class="code-highlight">adwiise_agent_db-postgresql-1</code> and database <code class="code-highlight">adwiise_agent_db</code>. Another Docker engine has its own database. The same source writes there only while that machine’s container is running, <code class="code-highlight">SUBSCRIPTION_RENEWAL_ENABLED</code> is true, and that database has membership tenants. Sharing the git repo does not share these tables.</p>
+        </div>
+
+        <div class="section-container parameters" id="configuration">
+            <div class="section-header parameters">Enable flags and cron properties</div>
+            <div class="parameters-list">
+                <p><strong>Subscription renewal</strong></p>
+                <ul>
+                    <li><code>SUBSCRIPTION_RENEWAL_ENABLED</code> maps to <code>batch.subscription-renewal.enabled</code>. Default <code>true</code>.</li>
+                    <li><code>SUBSCRIPTION_RENEWAL_CRON</code> maps to <code>batch.subscription-renewal.schedule-cron</code>. Default <code>0 0 */6 * * *</code>.</li>
+                    <li><code>SUBSCRIPTION_RENEWAL_BATCH_SIZE</code>, <code>SUBSCRIPTION_RENEWAL_MAX_SUBSCRIPTIONS</code>, and <code>SUBSCRIPTION_RENEWAL_DAYS_BEFORE</code> control each launch. Defaults are <code>100</code>, <code>10000</code>, and <code>7</code>.</li>
+                </ul>
+            </div>
+            <div class="parameters-list">
+                <p><strong>Daily jobs</strong></p>
+                <ul>
+                    <li><code>EMAIL_BATCH_ENABLED</code> and <code>EMAIL_BATCH_CRON</code>. Defaults <code>true</code> and <code>0 0 2 * * *</code>. Enabled still skips without a template.</li>
+                    <li><code>STRIPE_FEES_TAX_ENABLED</code> and <code>STRIPE_FEES_TAX_CRON</code>. Defaults <code>true</code> and <code>0 0 2 * * *</code>. This container does not set the enable variable, so the default stays on.</li>
+                    <li><code>MANUAL_PAYMENT_SUMMARY_ENABLED</code> and <code>MANUAL_PAYMENT_SUMMARY_CRON</code>. Defaults <code>true</code> and <code>0 0 2 * * *</code>.</li>
+                    <li>Platform billing lock reads <code>batch.platform-billing-lock.schedule-cron</code>. That key is not in <code class="script-name">application.yml</code>. The annotation default is <code>0 30 2 * * *</code>. There is no enable flag.</li>
+                </ul>
+            </div>
+            <div class="warning">
+                <strong>Stripe being unused does not stop renewal.</strong> Clearing <code class="code-highlight">STRIPE_DEFAULT_API_KEY</code> leaves <code class="code-highlight">SUBSCRIPTION_RENEWAL_ENABLED</code> at its default of <code class="code-highlight">true</code>. Set that variable to <code class="code-highlight">false</code> and restart the container to stop the six-row pattern.
+            </div>
+        </div>
+
+        <div class="section-container output" id="query">
+            <div class="section-header output">Query the Spring Batch rows</div>
+            <p>Run this against the database the container is using. Template and Copy both copy the same statement. There are no parameters to change.</p>
+            <div class="command-block verify"
+                 data-command-type="verify"
+                 data-command-base="SELECT e.job_execution_id, i.job_name, e.start_time, e.end_time, e.status FROM batch_job_execution e JOIN batch_job_instance i ON i.job_instance_id = e.job_instance_id ORDER BY e.start_time;"
+                 data-template-command="SELECT e.job_execution_id, i.job_name, e.start_time, e.end_time, e.status FROM batch_job_execution e JOIN batch_job_instance i ON i.job_instance_id = e.job_instance_id ORDER BY e.start_time;">
+                <div class="command-header">
+                    <span class="command-type">Verify query</span>
+                    <div class="command-header-buttons">
+                        <button type="button" class="copy-button-template" onclick="copyTemplateCommand(this, 'job-history-sql')" title="Copy template command">Template</button>
+                        <button type="button" class="copy-button" onclick="copyCommand(this, 'job-history-sql')" title="Copy customized command">Copy</button>
+                    </div>
+                </div>
+                <pre class="command-content" id="job-history-sql">SELECT e.job_execution_id, i.job_name, e.start_time, e.end_time, e.status FROM batch_job_execution e JOIN batch_job_instance i ON i.job_instance_id = e.job_instance_id ORDER BY e.start_time;</pre>
+                <div class="command-single-line" id="job-history-sql-single">
+                    <span class="command-single-line-label">Windows single-line</span>
+                    <code id="job-history-sql-single-code">SELECT e.job_execution_id, i.job_name, e.start_time, e.end_time, e.status FROM batch_job_execution e JOIN batch_job_instance i ON i.job_instance_id = e.job_instance_id ORDER BY e.start_time;</code>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script>
+        function fallbackCopy(text, button, idleLabel) {
+            const area = document.createElement('textarea');
+            area.value = text;
+            document.body.appendChild(area);
+            area.select();
+            try {
+                document.execCommand('copy');
+                button.classList.add('copied');
+                button.textContent = 'Copied';
+                setTimeout(function () {
+                    button.classList.remove('copied');
+                    button.textContent = idleLabel;
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy', err);
+            }
+            document.body.removeChild(area);
+        }
+
+        function writeClipboard(text, button, idleLabel) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function () {
+                    button.classList.add('copied');
+                    button.textContent = 'Copied';
+                    setTimeout(function () {
+                        button.classList.remove('copied');
+                        button.textContent = idleLabel;
+                    }, 2000);
+                }).catch(function () {
+                    fallbackCopy(text, button, idleLabel);
+                });
+            } else {
+                fallbackCopy(text, button, idleLabel);
+            }
+        }
+
+        function copyTemplateCommand(button, commandId) {
+            const commandBlock = button.closest('.command-block');
+            if (!commandBlock) {
+                return;
+            }
+            let templateCommand = commandBlock.getAttribute('data-template-command');
+            if (!templateCommand) {
+                const commandElement = document.getElementById(commandId);
+                if (!commandElement) {
+                    return;
+                }
+                templateCommand = commandElement.textContent.trim();
+            }
+            templateCommand = templateCommand.replace(/&quot;/g, '"');
+            writeClipboard(templateCommand, button, 'Template');
+        }
+
+        function copyCommand(button, commandId) {
+            const commandElement = document.getElementById(commandId);
+            if (!commandElement) {
+                return;
+            }
+            writeClipboard(commandElement.textContent.trim(), button, 'Copy');
+        }
+
+        function initializeCommands() {
+            document.querySelectorAll('.command-block[data-command-base]').forEach(function (block) {
+                const commandContent = block.querySelector('.command-content');
+                if (!commandContent || !commandContent.id) {
+                    return;
+                }
+                const singleLineCode = document.getElementById(commandContent.id + '-single-code');
+                if (singleLineCode) {
+                    singleLineCode.textContent = commandContent.textContent.trim();
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initializeCommands);
+    </script>
+</body>
+</html>

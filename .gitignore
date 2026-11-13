@@ -132,7 +132,8 @@ Desktop.ini
 ######################
 /bin/
 /deploy/
-/documentation/
+/documentation/*
+!/documentation/scheduled-batch-jobs.html
 
 ######################
 # Logs
