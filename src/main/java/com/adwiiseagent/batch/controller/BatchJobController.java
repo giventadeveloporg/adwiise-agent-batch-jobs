@@ -14,6 +14,8 @@ import com.adwiiseagent.batch.dto.ManualPaymentConfirmationEmailJobRequest;
 import com.adwiiseagent.batch.dto.ManualPaymentConfirmationEmailJobResponse;
 import com.adwiiseagent.batch.dto.ManualPaymentTicketEmailJobRequest;
 import com.adwiiseagent.batch.dto.ManualPaymentTicketEmailJobResponse;
+import com.adwiiseagent.batch.dto.TicketConfirmationEmailJobRequest;
+import com.adwiiseagent.batch.dto.TicketConfirmationEmailJobResponse;
 import com.adwiiseagent.batch.dto.StripeTicketBatchRefundRequest;
 import com.adwiiseagent.batch.dto.StripeTicketBatchRefundResponse;
 import com.adwiiseagent.batch.dto.DonationEmailJobRequest;
@@ -28,9 +30,11 @@ import com.adwiiseagent.batch.service.ContactFormEmailJobService;
 import com.adwiiseagent.batch.service.ManualPaymentSummaryJobService;
 import com.adwiiseagent.batch.service.ManualPaymentConfirmationEmailJobService;
 import com.adwiiseagent.batch.service.ManualPaymentTicketEmailJobService;
+import com.adwiiseagent.batch.service.TicketConfirmationEmailJobService;
 import com.adwiiseagent.batch.dto.RetailSampleRunRequest;
 import com.adwiiseagent.batch.service.PromotionTestEmailJobService;
 import com.adwiiseagent.batch.service.RetailSampleRunService;
+import com.adwiiseagent.batch.service.SearchTextBackfillService;
 import com.adwiiseagent.batch.service.StripeFeesTaxUpdateService;
 import com.adwiiseagent.batch.service.StripeTicketBatchRefundService;
 import jakarta.validation.Valid;
@@ -62,10 +66,12 @@ public class BatchJobController {
     private final ManualPaymentSummaryJobService manualPaymentSummaryJobService;
     private final ManualPaymentConfirmationEmailJobService manualPaymentConfirmationEmailJobService;
     private final ManualPaymentTicketEmailJobService manualPaymentTicketEmailJobService;
+    private final TicketConfirmationEmailJobService ticketConfirmationEmailJobService;
     private final StripeTicketBatchRefundService stripeTicketBatchRefundService;
     private final DonationEmailJobService donationEmailJobService;
     private final DonationQrCodeJobService donationQrCodeJobService;
     private final RetailSampleRunService retailSampleRunService;
+    private final SearchTextBackfillService searchTextBackfillService;
     private final EventTicketTransactionRepository transactionRepository;
 
     /**
@@ -468,6 +474,41 @@ public class BatchJobController {
     }
 
     /**
+     * Trigger the paid-ticket QR confirmation email.
+     * The API keeps the public send-ticket-email URL and posts here.
+     */
+    @PostMapping("/ticket-confirmation-email")
+    public ResponseEntity<TicketConfirmationEmailJobResponse> triggerTicketConfirmationEmail(
+        @Valid @RequestBody TicketConfirmationEmailJobRequest request
+    ) {
+        try {
+            log.info(
+                "Received request to trigger ticket confirmation email job - tenantId: {}, eventId: {}, ticketTransactionId: {}, recipientEmail: {}",
+                request.getTenantId(),
+                request.getEventId(),
+                request.getTicketTransactionId(),
+                request.getRecipientEmail()
+            );
+
+            TicketConfirmationEmailJobResponse response = ticketConfirmationEmailJobService.trigger(request);
+            if (Boolean.TRUE.equals(response.getSuccess())) {
+                return ResponseEntity.accepted().body(response);
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        } catch (Exception e) {
+            log.error("Failed to trigger ticket confirmation email job: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(TicketConfirmationEmailJobResponse.builder()
+                    .success(false)
+                    .message("Failed to trigger job: " + e.getMessage())
+                    .processedCount(0L)
+                    .successCount(0L)
+                    .failedCount(0L)
+                    .build());
+        }
+    }
+
+    /**
      * Trigger Stripe ticket batch refund job.
      * Processes eligible tickets for an event and creates Stripe refunds.
      */
@@ -591,6 +632,37 @@ public class BatchJobController {
                     .processedCount(0L)
                     .successCount(0L)
                     .failedCount(0L)
+                    .build());
+        }
+    }
+
+    /**
+     * Backfill search_text (and optional OCR) for events, gallery albums, focus groups, sponsors.
+     * Idempotent — safe to re-run. OCR only when batch.search-text-backfill.ocr-enabled=true.
+     */
+    @PostMapping("/search-text-backfill")
+    public ResponseEntity<BatchJobResponse> triggerSearchTextBackfill() {
+        try {
+            log.info("Received request to trigger search-text backfill job");
+            SearchTextBackfillService.BackfillResult result = searchTextBackfillService.runBackfill();
+            return ResponseEntity.ok(
+                BatchJobResponse.builder()
+                    .success(result.errors().isEmpty())
+                    .message(
+                        "structuredUpdates=" +
+                        result.structuredUpdates() +
+                        ", ocrUpdates=" +
+                        result.ocrUpdates() +
+                        (result.errors().isEmpty() ? "" : ", errors=" + result.errors())
+                    )
+                    .build()
+            );
+        } catch (Exception e) {
+            log.error("Failed to run search-text backfill: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(BatchJobResponse.builder()
+                    .success(false)
+                    .message("Failed to run search-text backfill: " + e.getMessage())
                     .build());
         }
     }

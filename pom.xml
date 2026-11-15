@@ -149,6 +149,13 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Tess4J for optional OCR backfill of search_text (requires native Tesseract when ocr-enabled) -->
+        <dependency>
+            <groupId>net.sourceforge.tess4j</groupId>
+            <artifactId>tess4j</artifactId>
+            <version>5.11.0</version>
+        </dependency>
+
         <!-- Jackson for JSON -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

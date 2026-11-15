@@ -79,6 +79,18 @@ public class EmailService {
      * @param isHtml   whether the body is HTML
      */
     public void sendEmail(String from, String replyTo, String to, String subject, String body, boolean isHtml) {
+        sendEmail(from, replyTo, to, subject, body, isHtml, null);
+    }
+
+    public void sendEmail(
+        String from,
+        String replyTo,
+        String to,
+        String subject,
+        String body,
+        boolean isHtml,
+        Map<String, String> headers
+    ) {
         if (sesCircuitBreaker.getState() == CircuitBreaker.State.OPEN) {
             log.warn("SES circuit breaker is OPEN, rejecting email send request");
             throw new RuntimeException("Email service is temporarily unavailable (circuit breaker open)");
@@ -94,18 +106,20 @@ public class EmailService {
                 ? Body.builder().html(Content.builder().data(body).build()).build()
                 : Body.builder().text(Content.builder().data(body).build()).build();
 
-            SendEmailRequest emailRequest = SendEmailRequest.builder()
+            SendEmailRequest.Builder emailRequestBuilder = SendEmailRequest.builder()
                 .destination(Destination.builder().toAddresses(to).build())
                 .message(Message.builder()
                     .subject(Content.builder().data(subject).build())
                     .body(emailBody)
                     .build())
                 .source(from != null && !from.isEmpty() ? from : fromAddress)
-                .replyToAddresses(replyTo != null && !replyTo.isEmpty() ? List.of(replyTo) : null)
-                .build();
+                .replyToAddresses(replyTo != null && !replyTo.isEmpty() ? List.of(replyTo) : null);
+            if (headers != null && !headers.isEmpty()) {
+                emailRequestBuilder.overrideConfiguration(cfg -> headers.forEach(cfg::putHeader));
+            }
 
             SendEmailResponse response = sesCircuitBreaker.executeSupplier(() ->
-                sesClient.sendEmail(emailRequest));
+                sesClient.sendEmail(emailRequestBuilder.build()));
 
             log.debug("Email sent successfully to {}: {}", to, response.messageId());
         } catch (SesException e) {

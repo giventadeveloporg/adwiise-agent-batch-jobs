@@ -110,6 +110,11 @@ batch:
     max-subscriptions: ${SUBSCRIPTION_RENEWAL_MAX_SUBSCRIPTIONS:10000}
     days-before-renewal: ${SUBSCRIPTION_RENEWAL_DAYS_BEFORE:7}
 
+  # Rebuild search_text from structured fields; optional Tess4J OCR when ocr-enabled=true
+  search-text-backfill:
+    ocr-enabled: ${SEARCH_TEXT_BACKFILL_OCR_ENABLED:false}
+    limit: ${SEARCH_TEXT_BACKFILL_LIMIT:200}
+
   # Official documents — foundation for planned batch jobs (thumbnails, URL refresh, bulk import).
   # Keep *.enabled=false until each job is fully implemented. Page size mirrors frontend (25).
   official-documents:

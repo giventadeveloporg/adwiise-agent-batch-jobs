@@ -113,6 +113,7 @@ public class BatchJobMonitoringService {
         jobs.add(onDemandJob("PROMOTION_TEST_EMAIL", "On-demand promotion test email job"));
         jobs.add(onDemandJob("MANUAL_PAYMENT_CONFIRMATION_EMAIL", "On-demand manual payment confirmation email job"));
         jobs.add(onDemandJob("MANUAL_PAYMENT_TICKET_EMAIL", "On-demand manual payment ticket email job"));
+        jobs.add(onDemandJob("TICKET_CONFIRMATION_EMAIL", "On-demand paid ticket QR confirmation email job"));
         jobs.add(onDemandJob("STRIPE_TICKET_BATCH_REFUND", "On-demand Stripe ticket batch refund job"));
         jobs.add(onDemandJob("DONATION_EMAIL", "On-demand donation email job"));
         jobs.add(onDemandJob("DONATION_QRCODE", "On-demand donation QR code generation job"));

@@ -33,6 +33,12 @@ public class GalleryAlbum implements Serializable {
     @Column(name = "description", length = 2048)
     private String description;
 
+    @Column(name = "ocr_text_from_images_upload", columnDefinition = "text")
+    private String ocrText;
+
+    @Column(name = "search_text", columnDefinition = "text")
+    private String searchText;
+
     @Column(name = "cover_image_url", length = 2048)
     private String coverImageUrl;
 
