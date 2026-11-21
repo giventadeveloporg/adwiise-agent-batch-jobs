@@ -6,28 +6,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import java.io.InputStream;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Backfills denormalized {@code search_text} (and optionally {@code ocr_text_from_images_upload}) for
  * event_details, gallery_album, focus_group, and event_sponsors.
  * <p>
- * Structured-field rebuild is always safe/idempotent. Image OCR runs only when
- * {@code batch.search-text-backfill.ocr-enabled=true} and Tess4J/native Tesseract
- * are available.
+ * Structured-field rebuild is always safe/idempotent. Image reading runs only when
+ * {@code batch.search-text-backfill.ocr-enabled=true}. It calls the service Bedrock endpoint
+ * and replaces rows that are not already marked BEDROCK.
  */
 @Service
 @RequiredArgsConstructor
@@ -35,6 +23,7 @@ import java.util.stream.Stream;
 public class SearchTextBackfillService {
 
     private final JdbcTemplate jdbcTemplate;
+    private final BackendApiService backendApiService;
 
     @Value("${batch.search-text-backfill.ocr-enabled:false}")
     private boolean ocrEnabled;
@@ -54,8 +43,50 @@ public class SearchTextBackfillService {
 
         if (ocrEnabled) {
             try {
-                ocrUpdated += ocrGalleryAlbumCovers();
-                ocrUpdated += ocrSponsorImages();
+                ocrUpdated += refreshImages(
+                    "event_sponsors",
+                    """
+                    SELECT id FROM event_sponsors
+                    WHERE (image_text_source IS NULL OR image_text_source <> 'BEDROCK')
+                      AND (
+                        (logo_url IS NOT NULL AND btrim(logo_url) <> '')
+                        OR (hero_image_url IS NOT NULL AND btrim(hero_image_url) <> '')
+                        OR (banner_image_url IS NOT NULL AND btrim(banner_image_url) <> '')
+                      )
+                    ORDER BY id
+                    LIMIT ?
+                    """
+                );
+                ocrUpdated += refreshImages(
+                    "gallery_album",
+                    """
+                    SELECT id FROM gallery_album
+                    WHERE cover_image_url IS NOT NULL AND btrim(cover_image_url) <> ''
+                      AND (image_text_source IS NULL OR image_text_source <> 'BEDROCK')
+                    ORDER BY id
+                    LIMIT ?
+                    """
+                );
+                ocrUpdated += refreshImages(
+                    "focus_group",
+                    """
+                    SELECT id FROM focus_group
+                    WHERE cover_image_url IS NOT NULL AND btrim(cover_image_url) <> ''
+                      AND (image_text_source IS NULL OR image_text_source <> 'BEDROCK')
+                    ORDER BY id
+                    LIMIT ?
+                    """
+                );
+                ocrUpdated += refreshImages(
+                    "event_details",
+                    """
+                    SELECT id FROM event_details
+                    WHERE email_header_image_url IS NOT NULL AND btrim(email_header_image_url) <> ''
+                      AND (image_text_source IS NULL OR image_text_source <> 'BEDROCK')
+                    ORDER BY id
+                    LIMIT ?
+                    """
+                );
             } catch (Exception e) {
                 log.error("[SearchTextBackfill] OCR phase failed: {}", e.getMessage(), e);
                 errors.add("OCR phase: " + e.getMessage());
@@ -144,147 +175,19 @@ public class SearchTextBackfillService {
         return n;
     }
 
-    private int ocrGalleryAlbumCovers() {
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-            """
-            SELECT id, cover_image_url AS image_url, ocr_text_from_images_upload, title, description, event_location
-            FROM gallery_album
-            WHERE cover_image_url IS NOT NULL AND btrim(cover_image_url) <> ''
-              AND (ocr_text_from_images_upload IS NULL OR btrim(ocr_text_from_images_upload) = '')
-            ORDER BY id
-            LIMIT ?
-            """,
-            limit
-        );
+    private int refreshImages(String entityType, String sql) {
+        List<Long> ids = jdbcTemplate.query(sql, (rs, rowNum) -> rs.getLong(1), limit);
         int updated = 0;
-        for (Map<String, Object> row : rows) {
-            Long id = ((Number) row.get("id")).longValue();
-            String imageUrl = (String) row.get("image_url");
-            String extracted = ocrImageUrl(imageUrl, "gallery-album-" + id);
-            if (extracted == null || extracted.isBlank()) {
-                continue;
+        for (Long id : ids) {
+            try {
+                backendApiService.refreshImageSearchText(entityType, id);
+                updated++;
+            } catch (Exception e) {
+                log.warn("[SearchTextBackfill] {} {} skipped: {}", entityType, id, e.getMessage());
             }
-            String merged = mergeOcr((String) row.get("ocr_text_from_images_upload"), extracted);
-            String search = joinSearch(
-                (String) row.get("title"),
-                (String) row.get("description"),
-                (String) row.get("event_location"),
-                merged
-            );
-            jdbcTemplate.update(
-                "UPDATE gallery_album SET ocr_text_from_images_upload = ?, search_text = ?, updated_at = NOW() WHERE id = ?",
-                merged,
-                search,
-                id
-            );
-            updated++;
         }
-        log.info("[SearchTextBackfill] gallery_album OCR updates={}", updated);
+        log.info("[SearchTextBackfill] {} image updates={}", entityType, updated);
         return updated;
-    }
-
-    private int ocrSponsorImages() {
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-            """
-            SELECT id, logo_url, hero_image_url, banner_image_url, ocr_text_from_images_upload,
-                   name, company_name, tagline, description, type
-            FROM event_sponsors
-            WHERE (ocr_text_from_images_upload IS NULL OR btrim(ocr_text_from_images_upload) = '')
-              AND (
-                (logo_url IS NOT NULL AND btrim(logo_url) <> '')
-                OR (hero_image_url IS NOT NULL AND btrim(hero_image_url) <> '')
-                OR (banner_image_url IS NOT NULL AND btrim(banner_image_url) <> '')
-              )
-            ORDER BY id
-            LIMIT ?
-            """,
-            limit
-        );
-        int updated = 0;
-        for (Map<String, Object> row : rows) {
-            Long id = ((Number) row.get("id")).longValue();
-            String merged = (String) row.get("ocr_text_from_images_upload");
-            for (String col : List.of("logo_url", "hero_image_url", "banner_image_url")) {
-                String url = (String) row.get(col);
-                if (url == null || url.isBlank()) continue;
-                String extracted = ocrImageUrl(url, "sponsor-" + id + "-" + col);
-                if (extracted != null && !extracted.isBlank()) {
-                    merged = mergeOcr(merged, extracted);
-                }
-            }
-            if (merged == null || merged.isBlank()) continue;
-            String search = joinSearch(
-                (String) row.get("name"),
-                (String) row.get("company_name"),
-                (String) row.get("tagline"),
-                (String) row.get("description"),
-                (String) row.get("type"),
-                merged
-            );
-            jdbcTemplate.update(
-                "UPDATE event_sponsors SET ocr_text_from_images_upload = ?, search_text = ?, updated_at = NOW() WHERE id = ?",
-                merged,
-                search,
-                id
-            );
-            updated++;
-        }
-        log.info("[SearchTextBackfill] event_sponsors OCR updates={}", updated);
-        return updated;
-    }
-
-    private String ocrImageUrl(String imageUrl, String label) {
-        Path temp = null;
-        try {
-            HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build();
-            HttpRequest request = HttpRequest.newBuilder(URI.create(imageUrl)).GET().timeout(Duration.ofSeconds(60)).build();
-            HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
-            if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                log.warn("[SearchTextBackfill] Download failed for {}: HTTP {}", label, response.statusCode());
-                return null;
-            }
-            temp = Files.createTempFile("ocr-backfill-", ".img");
-            try (InputStream in = response.body()) {
-                Files.copy(in, temp, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            }
-
-            net.sourceforge.tess4j.Tesseract tesseract = new net.sourceforge.tess4j.Tesseract();
-            String text = tesseract.doOCR(temp.toFile());
-            if (text == null) return null;
-            String cleaned = text.replaceAll("\\s+", " ").trim();
-            log.info("[SearchTextBackfill] OCR {} chars from {}", cleaned.length(), label);
-            return cleaned;
-        } catch (NoClassDefFoundError | Exception e) {
-            log.warn("[SearchTextBackfill] OCR unavailable for {}: {}", label, e.getMessage());
-            return null;
-        } finally {
-            if (temp != null) {
-                try {
-                    Files.deleteIfExists(temp);
-                } catch (Exception ignored) {
-                    // ignore
-                }
-            }
-        }
-    }
-
-    private static String mergeOcr(String existing, String incoming) {
-        String a = existing == null ? "" : existing.trim();
-        String b = incoming == null ? "" : incoming.trim();
-        if (b.isEmpty()) return a;
-        if (a.isEmpty()) return b;
-        if (a.toLowerCase(Locale.ROOT).contains(b.toLowerCase(Locale.ROOT))) return a;
-        return (a + "\n" + b).replaceAll("\n{3,}", "\n\n").trim();
-    }
-
-    private static String joinSearch(String... parts) {
-        return Stream.of(parts)
-            .filter(p -> p != null && !p.isBlank())
-            .map(String::trim)
-            .collect(Collectors.joining(" "))
-            .replaceAll("\\s+", " ")
-            .trim()
-            .toLowerCase(Locale.ROOT);
     }
 
     public record BackfillResult(int structuredUpdates, int ocrUpdates, List<String> errors) {}

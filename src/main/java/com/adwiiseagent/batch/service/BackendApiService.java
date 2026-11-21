@@ -334,4 +334,33 @@ public class BackendApiService {
             return null;
         }
     }
+
+    /**
+     * Ask the service to read image words with Bedrock and store them on the row.
+     */
+    public int refreshImageSearchText(String entityType, long entityId) {
+        String url = backendApiBaseUrl + "/api/image-search-text";
+        String jwtToken = getJwtToken();
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("entityType", entityType);
+        requestBody.put("entityId", entityId);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(jwtToken);
+        ResponseEntity<String> response = restTemplate.exchange(
+            url,
+            HttpMethod.POST,
+            new HttpEntity<>(requestBody, headers),
+            String.class
+        );
+        if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+            throw new IllegalStateException("Image search text failed for " + entityType + " " + entityId);
+        }
+        try {
+            JsonNode body = objectMapper.readTree(response.getBody());
+            return body.path("words").asInt(0);
+        } catch (Exception e) {
+            throw new IllegalStateException("Image search text response was not readable", e);
+        }
+    }
 }
