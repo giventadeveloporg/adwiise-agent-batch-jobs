@@ -15,7 +15,8 @@ import java.util.List;
  * <p>
  * Structured-field rebuild is always safe/idempotent. Image reading runs only when
  * {@code batch.search-text-backfill.ocr-enabled=true}. It calls the service Bedrock endpoint
- * and replaces rows that are not already marked BEDROCK.
+ * for rows that are not already marked BEDROCK with words, including BEDROCK rows whose
+ * image text is still blank. Rows marked BEDROCK_NONE are left alone.
  */
 @Service
 @RequiredArgsConstructor
@@ -47,7 +48,14 @@ public class SearchTextBackfillService {
                     "event_sponsors",
                     """
                     SELECT id FROM event_sponsors
-                    WHERE (image_text_source IS NULL OR image_text_source <> 'BEDROCK')
+                    WHERE (
+                        image_text_source IS NULL
+                        OR (image_text_source <> 'BEDROCK' AND image_text_source <> 'BEDROCK_NONE')
+                        OR (
+                            image_text_source = 'BEDROCK'
+                            AND (ocr_text_from_images_upload IS NULL OR btrim(ocr_text_from_images_upload) = '')
+                        )
+                    )
                       AND (
                         (logo_url IS NOT NULL AND btrim(logo_url) <> '')
                         OR (hero_image_url IS NOT NULL AND btrim(hero_image_url) <> '')
@@ -62,7 +70,14 @@ public class SearchTextBackfillService {
                     """
                     SELECT id FROM gallery_album
                     WHERE cover_image_url IS NOT NULL AND btrim(cover_image_url) <> ''
-                      AND (image_text_source IS NULL OR image_text_source <> 'BEDROCK')
+                      AND (
+                        image_text_source IS NULL
+                        OR (image_text_source <> 'BEDROCK' AND image_text_source <> 'BEDROCK_NONE')
+                        OR (
+                            image_text_source = 'BEDROCK'
+                            AND (ocr_text_from_images_upload IS NULL OR btrim(ocr_text_from_images_upload) = '')
+                        )
+                    )
                     ORDER BY id
                     LIMIT ?
                     """
@@ -72,7 +87,14 @@ public class SearchTextBackfillService {
                     """
                     SELECT id FROM focus_group
                     WHERE cover_image_url IS NOT NULL AND btrim(cover_image_url) <> ''
-                      AND (image_text_source IS NULL OR image_text_source <> 'BEDROCK')
+                      AND (
+                        image_text_source IS NULL
+                        OR (image_text_source <> 'BEDROCK' AND image_text_source <> 'BEDROCK_NONE')
+                        OR (
+                            image_text_source = 'BEDROCK'
+                            AND (ocr_text_from_images_upload IS NULL OR btrim(ocr_text_from_images_upload) = '')
+                        )
+                    )
                     ORDER BY id
                     LIMIT ?
                     """
@@ -82,7 +104,14 @@ public class SearchTextBackfillService {
                     """
                     SELECT id FROM event_details
                     WHERE email_header_image_url IS NOT NULL AND btrim(email_header_image_url) <> ''
-                      AND (image_text_source IS NULL OR image_text_source <> 'BEDROCK')
+                      AND (
+                        image_text_source IS NULL
+                        OR (image_text_source <> 'BEDROCK' AND image_text_source <> 'BEDROCK_NONE')
+                        OR (
+                            image_text_source = 'BEDROCK'
+                            AND (ocr_text_from_images_upload IS NULL OR btrim(ocr_text_from_images_upload) = '')
+                        )
+                    )
                     ORDER BY id
                     LIMIT ?
                     """
