@@ -154,6 +154,12 @@ public class TenantSettings implements Serializable {
     @Column(name = "tiktok_url", length = 1024)
     private String tiktokUrl;
 
+    @Column(name = "tenant_name", length = 255)
+    private String tenantName;
+
+    @Column(name = "whatsapp_url", length = 1024)
+    private String whatsappUrl;
+
     @Column(name = "homepage_cache_version", nullable = false)
     private Long homepageCacheVersion = 0L;
 
