@@ -25,8 +25,7 @@ public class TenantOrganization implements Serializable {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "tenant_id", length = 255, nullable = false, unique = true)
-    private String tenantId;
+    // tenant_id moved to tenant_settings (backend changelog 20261111020000); the column no longer exists here.
 
     @Column(name = "organization_name", length = 255, nullable = false)
     private String organizationName;
